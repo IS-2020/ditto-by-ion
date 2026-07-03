@@ -4,7 +4,6 @@ import type { IR } from "../normalize/ir.js";
 import type { PageSnapshot, RawNode, RawChild } from "../capture/walker.js";
 import type { GateResult } from "../validate/gates.js";
 import { collectSrcNodes, normText } from "./gateHelpers.js";
-import { indexByCid } from "./render.js";
 
 /** Visible per-tag counts + visible direct-text corpus from a raw capture/render
  *  snapshot tree. Live-page snapshots carry no data-cid identity, so witness
@@ -104,9 +103,10 @@ export function gate3cCloneVsWitness(
     if (!gen) continue;
     const witness = readJSON<PageSnapshot>(domPath);
     const w = collectVisible(witness.root as RawNode);
-    // The rendered clone snapshot carries data-cid identity; its text corpus is the
-    // same either way, so reuse the cid index the other gates already build.
-    const genText = normText([...indexByCid(gen).values()].filter((n) => n.visible).map((n) => n.text).join(" "));
+    // Walk the clone's raw snapshot tree (NOT the data-cid index): inline-SVG text
+    // renders from rawHTML without cids, so a cid-indexed corpus under-counts what
+    // the clone actually shows.
+    const genText = normText(collectVisible(gen.root as RawNode).corpus);
 
     for (const t of w.texts) {
       if (t.length < 4) continue;

@@ -61,24 +61,42 @@ Tests: 51/51 across workspaces; typecheck clean; both run under
    `type="text/css"` corruption class of bugs (ooni.com) and
    prefix-of-longer-URL clipping; 5 regression tests.
 
+## Round 2 (same day): witness gates fixed, preview polish
+
+- **Gates 2b/3b/3c rebuilt.** 3b matched 0.0% everywhere (per-cid lookup
+  against live snapshots that carry no data-cid); 3c passed vacuously (0 texts
+  checked); 2b counted `<a href>` page links and unshipped scripts as missing
+  assets. All three now compare against the raw walker snapshot with
+  asset-policy-aware filtering. Post-fix bench: michaelcole.me and arkli.io
+  show ZERO failing gates; f.inc's `dom_clone_witness` flag is a REAL finding
+  (see below).
+- **Real defect surfaced by the fixed gate**: f.inc's portfolio deck is a
+  JS opacity-cycling widget — its card texts ("Rork", "Paraform", …) exist in
+  the IR and generated page but are frozen invisible at 375 px (witness-text
+  presence 79.8%). This is the carousel/deck-freeze fidelity class the pattern
+  fix-bundle roadmap targets; the gate now measures it honestly.
+- **Preview**: JSON-escaped flight-data refs now rewritten; srcset rewrite
+  de-compounded (test-caught); a clean, prune-free verify build is reused for
+  the preview (~6 s saved when `verify:true`).
+- **Timings**: the CLI emits `captured`, so `timings` now reports real
+  `captureMs` / `generateMs` instead of a lump.
+
 ## Remaining gaps (honest list)
 
 - **Fresh cropin < 60 s**: not reachable without cutting capture fidelity —
   the 77 s is live settle/lazy-load/asset time on a heavy Elementor page. The
-  cached-capture path is the product answer (12 s).
+  cached-capture path is the product answer (12 s). Parallel-viewport capture
+  is the roadmap lever (docs/effectiveness-roadmap.md §3).
 - **Precompiled codegen templates**: not built. Measured generate time is a
   small fraction of the pipeline (IR+infer+codegen ≈ 1–4 s even on cropin), so
   template short-circuiting would save little; capture and `next build`
   dominate. Revisit only if generate ever becomes the bottleneck.
-- **`html_witness`/`dom_witness` (gates 2b/3b/3c)**: pre-existing diagnostic
-  triangle flags on every site, passing or not. Not a regression; needs its
-  own calibration pass.
-- **Preview hydration edge**: RSC flight-data strings still carry absolute
-  `/_next/` refs (attribute/CSS refs are rewritten). Chunks load via relative
-  tags; dynamic imports at odd mount depths could 404.
+- **Opacity-carousel / deck freeze** (f.inc class): clone freezes the hidden
+  base state of autoplay opacity widgets; needs a pattern fix bundle
+  (freeze-at-visible-slide capture recipe + static flatten).
 - **Events for the DB/queue backend**: in-memory only; the worker path would
   need an events table or Redis stream.
-- **Verify + preview double-build**: `verify:true` builds in the harness, then
-  the preview builds again (~6 s warm). Could share one build.
 - **Wall fast-fail live repro**: LinkedIn currently serves public profiles
   (no wall), so the abort path is exercised by unit logic + shared regex only.
+
+The forward plan lives in docs/effectiveness-roadmap.md.
