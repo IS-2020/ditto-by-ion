@@ -40,7 +40,7 @@ import type { CaptureResult } from "../capture/capture.js";
 const DEFAULT_HARNESS = fileURLToPath(new URL("../../.harness", import.meta.url));
 
 const DETERMINISM_FILES = [
-  "manifest.json", "sections.json", "tokens.json", "assets.json", "fonts.json", "components.json", "recipes.json", "recipes.md", "interaction-recipes.json", "interaction-recipes.md", "seo.json", "seo.md", "code-quality.json", "code-quality.md",
+  "manifest.json", "sections.json", "tokens.json", "assets.json", "fonts.json", "components.json", "patterns.json", "recipes.json", "recipes.md", "interaction-recipes.json", "interaction-recipes.md", "seo.json", "seo.md", "code-quality.json", "code-quality.md",
   "app/src/app/page.tsx", "app/src/app/ditto.css", "app/src/app/globals.css", "app/src/app/layout.tsx",
   "app/AGENTS.md", "app/ARCHITECTURE.md",
   "app/src/app/content.ts", // Stage 6 — present only when extraction promoted components
@@ -50,7 +50,7 @@ const DETERMINISM_FILES = [
 ];
 
 const VITE_DETERMINISM_FILES = [
-  "manifest.json", "sections.json", "tokens.json", "assets.json", "fonts.json", "components.json", "recipes.json", "recipes.md", "interaction-recipes.json", "interaction-recipes.md", "seo.json", "seo.md", "code-quality.json", "code-quality.md",
+  "manifest.json", "sections.json", "tokens.json", "assets.json", "fonts.json", "components.json", "patterns.json", "recipes.json", "recipes.md", "interaction-recipes.json", "interaction-recipes.md", "seo.json", "seo.md", "code-quality.json", "code-quality.md",
   "app/index.html", "app/vite.config.ts", "app/src/page.tsx", "app/src/main.tsx", "app/src/ditto.css", "app/src/globals.css",
   "app/AGENTS.md", "app/ARCHITECTURE.md",
   "app/src/content.ts",

@@ -48,3 +48,37 @@ Default Next generated apps use `src/app/ditto.css` and optional helpers under
 under `src/ditto/`, with multi-route pages under `src/routes/`. Validation builds
 keep `data-cid` attributes for source/clone alignment; delivered apps strip those
 validation ids and keep only required `data-ditto-id` anchors.
+
+## Pattern Index (frozen catalog)
+
+`src/knowledge/patternIndex.ts` matches known widget / platform / animation
+signatures against the IR's frozen capture evidence (`srcClass`, tags, attrs)
+and emits deterministic hints to `generated/patterns.json` on every
+`generateAll` run (the artifact is listed in the Gate 6 determinism file set).
+
+- **Catalog**: `data/pattern-catalog.json` — signature-indexed pattern defs
+  (`classTokens`, `classPrefixes`, `tags`, `attrNames`, `idPrefixes`), each with
+  a `kind` and downstream `flags` (`deferred_interactive`, `motion_lib`,
+  `platform_*`, `consent_overlay`, …).
+- **Pin**: `data/pattern-catalog.lock` holds the catalog's sha256. After a
+  deliberate catalog edit, refresh it with
+  `tsx src/knowledge/patternIndex.ts --write-lock`.
+- **Strict mode**: `CATALOG_ONLY_HINTS=true` (CI default) turns a lock mismatch
+  into a hard error via `assertPinnedCatalog()`. There is no learning layer in
+  this fork — hints are catalog-only by construction.
+- **Lookup API**: `loadPatternIndex()` compiles the catalog into O(1) maps
+  (class token / tag / attr name) plus small prefix lists;
+  `resolvePatternHints(ir)` performs one pre-order IR walk and returns
+  `{ matches, flags, platforms, simpleStatic }`. `simpleStatic` (no interactive
+  or motion-library signatures, small tree) marks pages where callers may skip
+  optional capture stages.
+
+## Determinism model
+
+| Layer | Deterministic? | Notes |
+| --- | --- | --- |
+| Generation from a frozen capture (`generateAll`) | Yes | Same `source/` ⇒ byte-identical output; enforced by Gate 6 over `DETERMINISM_FILES` (incl. `patterns.json`). |
+| Pattern hints | Yes | Frozen catalog (sha256-pinned) + frozen IR ⇒ identical `patterns.json`. |
+| Live Playwright capture | No | Network, A/B tests, consent walls, bot detection. Bounded: navigation has a 60s total budget and auth/bot walls fail fast with a clear error. |
+| Validation | Frozen | Gates re-render the built clone against captured evidence; no live URL is re-fetched. |
+| App preview build (service layer) | No | `next build` embeds build ids; the preview lives at `generated/app/public/app-preview/`, outside every determinism surface. |
