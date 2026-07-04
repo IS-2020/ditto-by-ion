@@ -10,7 +10,14 @@ await esbuild.build({
   platform: "node",
   target: "node20",
   format: "esm",
-  packages: "external",
+  external: [
+    "playwright",
+    "playwright-core",
+    "@playwright/test",
+    "fsevents",
+    "sharp",
+    "canvas",
+  ],
   logLevel: "info",
 });
 
