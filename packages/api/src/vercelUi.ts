@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { handle } from "hono/vercel";
+import { handle } from "@hono/node-server/vercel";
 import { WIZARD_HTML } from "./wizard.js";
 import { STUDIO_HTML } from "./ui.js";
 import { SHELL_HTML } from "./shell.js";
