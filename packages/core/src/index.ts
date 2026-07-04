@@ -13,6 +13,10 @@ export {
   resolveCloneOptions,
   resolveCloneStyling,
 } from "./options.js";
+export { applyQualityTier } from "./qualityTiers.js";
+export type { QualityTier } from "./qualityTiers.js";
+export { checkCaptureCache } from "./cacheCheck.js";
+export type { CacheCheckResult } from "./cacheCheck.js";
 export { COMPILER_VERSION } from "clone-static";
 export type {
   CloneMode,

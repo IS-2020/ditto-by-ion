@@ -1,0 +1,1102 @@
+{
+  "minedAt": "2026-07-04T15:38:15.531Z",
+  "limit": 100,
+  "mineSubpages": true,
+  "domainsAttempted": 100,
+  "domainsFetched": 68,
+  "scriptHints": [
+    [
+      "next",
+      135
+    ],
+    [
+      "react",
+      107
+    ],
+    [
+      "vimeo",
+      21
+    ],
+    [
+      "youtube",
+      18
+    ],
+    [
+      "jquery",
+      9
+    ],
+    [
+      "wp-content",
+      9
+    ],
+    [
+      "cloudflare",
+      5
+    ],
+    [
+      "angular",
+      4
+    ],
+    [
+      "googletagmanager",
+      3
+    ],
+    [
+      "clarity",
+      2
+    ],
+    [
+      "onetrust",
+      1
+    ],
+    [
+      "bootstrap",
+      1
+    ],
+    [
+      "swiper",
+      1
+    ],
+    [
+      "wp-includes",
+      1
+    ]
+  ],
+  "scriptDomCandidates": [
+    {
+      "id": "platform_next_script",
+      "kind": "platform",
+      "match": {
+        "classTokens": [
+          "__next"
+        ],
+        "idPrefixes": [
+          "__next"
+        ]
+      },
+      "flags": [
+        "third_party_widget"
+      ],
+      "note": "Script hint \"next\" on 135 pages",
+      "siteCount": 135
+    },
+    {
+      "id": "platform_react_script",
+      "kind": "platform",
+      "match": {
+        "classTokens": [
+          "react-root"
+        ]
+      },
+      "flags": [
+        "third_party_widget"
+      ],
+      "note": "Script hint \"react\" on 107 pages",
+      "siteCount": 107
+    },
+    {
+      "id": "analytics_gtm_script",
+      "kind": "embed",
+      "match": {
+        "idPrefixes": [
+          "GTM-"
+        ]
+      },
+      "flags": [
+        "third_party_widget"
+      ],
+      "note": "Script hint \"googletagmanager\" on 3 pages",
+      "siteCount": 3
+    }
+  ],
+  "topClassPrefixes": [
+    [
+      "text-",
+      3494
+    ],
+    [
+      "items-",
+      1611
+    ],
+    [
+      "flex-",
+      1596
+    ],
+    [
+      "gap-",
+      1187
+    ],
+    [
+      "font-",
+      1164
+    ],
+    [
+      "rgim_",
+      1048
+    ],
+    [
+      "transition-",
+      1024
+    ],
+    [
+      "block-",
+      985
+    ],
+    [
+      "duration-",
+      943
+    ],
+    [
+      "rounded-",
+      921
+    ],
+    [
+      "nav-",
+      913
+    ],
+    [
+      "justify-",
+      894
+    ],
+    [
+      "group-",
+      800
+    ],
+    [
+      "ocr-",
+      794
+    ],
+    [
+      "max-",
+      693
+    ],
+    [
+      "overflow-",
+      658
+    ],
+    [
+      "pointer-",
+      634
+    ],
+    [
+      "list-",
+      616
+    ],
+    [
+      "ease-",
+      597
+    ],
+    [
+      "primer_brand__text-",
+      566
+    ],
+    [
+      "nv00-",
+      565
+    ],
+    [
+      "leading-",
+      547
+    ],
+    [
+      "size-",
+      546
+    ],
+    [
+      "border-",
+      544
+    ],
+    [
+      "shrink-",
+      527
+    ],
+    [
+      "btn-",
+      506
+    ],
+    [
+      "focus-",
+      494
+    ],
+    [
+      "cursor-",
+      480
+    ],
+    [
+      "hover:text-",
+      468
+    ],
+    [
+      "align-",
+      461
+    ],
+    [
+      "min-",
+      450
+    ],
+    [
+      "icon-",
+      426
+    ],
+    [
+      "e-10451-card_",
+      420
+    ],
+    [
+      "inline-",
+      407
+    ],
+    [
+      "motion-",
+      407
+    ],
+    [
+      "single-",
+      403
+    ],
+    [
+      "rgca_",
+      400
+    ],
+    [
+      "m24-",
+      389
+    ],
+    [
+      "top-",
+      383
+    ],
+    [
+      "rgft_",
+      370
+    ]
+  ],
+  "minedSuggestions": [
+    {
+      "id": "mined_prefix_min",
+      "kind": "platform",
+      "flags": [
+        "third_party_widget"
+      ],
+      "match": {
+        "classPrefixes": [
+          "min-"
+        ]
+      },
+      "note": "Class prefix \"min-\" on 68 top sites",
+      "siteCount": 68
+    },
+    {
+      "id": "mined_prefix_overflow",
+      "kind": "platform",
+      "flags": [
+        "third_party_widget"
+      ],
+      "match": {
+        "classPrefixes": [
+          "overflow-"
+        ]
+      },
+      "note": "Class prefix \"overflow-\" on 68 top sites",
+      "siteCount": 68
+    },
+    {
+      "id": "mined_prefix_transition",
+      "kind": "platform",
+      "flags": [
+        "third_party_widget"
+      ],
+      "match": {
+        "classPrefixes": [
+          "transition-"
+        ]
+      },
+      "note": "Class prefix \"transition-\" on 68 top sites",
+      "siteCount": 68
+    },
+    {
+      "id": "mined_prefix_duration",
+      "kind": "platform",
+      "flags": [
+        "third_party_widget"
+      ],
+      "match": {
+        "classPrefixes": [
+          "duration-"
+        ]
+      },
+      "note": "Class prefix \"duration-\" on 68 top sites",
+      "siteCount": 68
+    },
+    {
+      "id": "mined_prefix_ease",
+      "kind": "platform",
+      "flags": [
+        "third_party_widget"
+      ],
+      "match": {
+        "classPrefixes": [
+          "ease-"
+        ]
+      },
+      "note": "Class prefix \"ease-\" on 68 top sites",
+      "siteCount": 68
+    },
+    {
+      "id": "mined_prefix_left",
+      "kind": "platform",
+      "flags": [
+        "third_party_widget"
+      ],
+      "match": {
+        "classPrefixes": [
+          "left-"
+        ]
+      },
+      "note": "Class prefix \"left-\" on 68 top sites",
+      "siteCount": 68
+    },
+    {
+      "id": "mined_prefix_right",
+      "kind": "platform",
+      "flags": [
+        "third_party_widget"
+      ],
+      "match": {
+        "classPrefixes": [
+          "right-"
+        ]
+      },
+      "note": "Class prefix \"right-\" on 68 top sites",
+      "siteCount": 68
+    },
+    {
+      "id": "mined_prefix_border",
+      "kind": "platform",
+      "flags": [
+        "third_party_widget"
+      ],
+      "match": {
+        "classPrefixes": [
+          "border-"
+        ]
+      },
+      "note": "Class prefix \"border-\" on 68 top sites",
+      "siteCount": 68
+    },
+    {
+      "id": "mined_prefix_cursor",
+      "kind": "platform",
+      "flags": [
+        "third_party_widget"
+      ],
+      "match": {
+        "classPrefixes": [
+          "cursor-"
+        ]
+      },
+      "note": "Class prefix \"cursor-\" on 68 top sites",
+      "siteCount": 68
+    },
+    {
+      "id": "mined_prefix_shrink",
+      "kind": "platform",
+      "flags": [
+        "third_party_widget"
+      ],
+      "match": {
+        "classPrefixes": [
+          "shrink-"
+        ]
+      },
+      "note": "Class prefix \"shrink-\" on 68 top sites",
+      "siteCount": 68
+    },
+    {
+      "id": "mined_prefix_box",
+      "kind": "platform",
+      "flags": [
+        "third_party_widget"
+      ],
+      "match": {
+        "classPrefixes": [
+          "box-"
+        ]
+      },
+      "note": "Class prefix \"box-\" on 68 top sites",
+      "siteCount": 68
+    },
+    {
+      "id": "mined_prefix_opacity",
+      "kind": "platform",
+      "flags": [
+        "third_party_widget"
+      ],
+      "match": {
+        "classPrefixes": [
+          "opacity-"
+        ]
+      },
+      "note": "Class prefix \"opacity-\" on 68 top sites",
+      "siteCount": 68
+    },
+    {
+      "id": "mined_prefix_inline",
+      "kind": "platform",
+      "flags": [
+        "third_party_widget"
+      ],
+      "match": {
+        "classPrefixes": [
+          "inline-"
+        ]
+      },
+      "note": "Class prefix \"inline-\" on 68 top sites",
+      "siteCount": 68
+    },
+    {
+      "id": "mined_prefix_whitespace",
+      "kind": "platform",
+      "flags": [
+        "third_party_widget"
+      ],
+      "match": {
+        "classPrefixes": [
+          "whitespace-"
+        ]
+      },
+      "note": "Class prefix \"whitespace-\" on 68 top sites",
+      "siteCount": 68
+    },
+    {
+      "id": "mined_prefix_size",
+      "kind": "platform",
+      "flags": [
+        "third_party_widget"
+      ],
+      "match": {
+        "classPrefixes": [
+          "size-"
+        ]
+      },
+      "note": "Class prefix \"size-\" on 68 top sites",
+      "siteCount": 68
+    }
+  ],
+  "perSiteSample": [
+    {
+      "domain": "google.com",
+      "url": "https://www.google.com/",
+      "bytes": 85559,
+      "topClasses": [
+        "gb_7",
+        "gb_6",
+        "gb_5",
+        "lsbb",
+        "lsb",
+        "gb_na",
+        "gb_kd",
+        "gb_fb",
+        "gb_e",
+        "gb_9a",
+        "gb_8d",
+        "gb_cb"
+      ],
+      "scriptHints": [],
+      "generators": []
+    },
+    {
+      "domain": "cloudflare.com",
+      "url": "https://www.cloudflare.com/",
+      "bytes": 800000,
+      "topClasses": [
+        "shrink-0",
+        "items-center",
+        "flex",
+        "absolute",
+        "justify-center",
+        "overflow-hidden",
+        "relative",
+        "duration-200",
+        "ease-out",
+        "pointer-events-none",
+        "opacity-0",
+        "select-none"
+      ],
+      "scriptHints": [
+        "cloudflare"
+      ],
+      "generators": [
+        "astro v6.3.7"
+      ]
+    },
+    {
+      "domain": "facebook.com",
+      "url": "https://www.facebook.com/",
+      "bytes": 420630,
+      "topClasses": [
+        "x9f619",
+        "x193iq5w",
+        "x1n2onr6",
+        "x78zum5",
+        "x1ja2u2z",
+        "xdt5ytf",
+        "xeuugli",
+        "x2lah0s",
+        "xo1l8bm",
+        "x1lliihq",
+        "xyri2b",
+        "x1c1uobl"
+      ],
+      "scriptHints": [],
+      "generators": []
+    },
+    {
+      "domain": "microsoft.com",
+      "url": "https://www.microsoft.com/en-us",
+      "bytes": 258833,
+      "topClasses": [
+        "uhf-footer-link",
+        "uhf-nav-item",
+        "uhf-dropdown-link",
+        "aem-gridcolumn",
+        "aem-gridcolumn--default--12",
+        "uhf-nav-link",
+        "msstore-chatonpage__prompt-pill",
+        "uhf-footer-nav-group",
+        "responsivegrid",
+        "aem-grid",
+        "aem-grid--12",
+        "aem-grid--default--12"
+      ],
+      "scriptHints": [
+        "jquery"
+      ],
+      "generators": []
+    },
+    {
+      "domain": "amazonaws.com",
+      "url": "https://aws.amazon.com/",
+      "bytes": 329865,
+      "topClasses": [
+        "rgim_8711ccd9",
+        "rgim_82d7eac3",
+        "rgim_aa83ac72",
+        "rgim_9e423fbb",
+        "rgim_1ed8cbde",
+        "rgim_5962fadc",
+        "rgim_e90ac70d",
+        "rgim_38d8ffac",
+        "rgim_f7822e54",
+        "rgim_b78e9379",
+        "rgim_5e58a6df",
+        "rgim_f5857abf"
+      ],
+      "scriptHints": [],
+      "generators": []
+    },
+    {
+      "domain": "youtube.com",
+      "url": "https://www.youtube.com/",
+      "bytes": 769817,
+      "topClasses": [
+        "skeleton-bg-color",
+        "text-shell",
+        "video-details",
+        "details",
+        "rich-grid-media-skeleton",
+        "rich-thumbnail",
+        "channel-avatar",
+        "details-text-shell",
+        "rich-video-title",
+        "rich-video-meta",
+        "flex-1",
+        "video-skeleton"
+      ],
+      "scriptHints": [
+        "next",
+        "youtube"
+      ],
+      "generators": []
+    },
+    {
+      "domain": "apple.com",
+      "url": "https://www.apple.com/",
+      "bytes": 250215,
+      "topClasses": [
+        "ac-gf-directory-column-section-item",
+        "ac-gf-directory-column-section-link",
+        "button",
+        "ac-gf-directory-column-section-title-text",
+        "theme-dark",
+        "media-gallery-longnote",
+        "button-neutral",
+        "media-gallery-item",
+        "media-gallery-wrapper-link",
+        "fam-media-gallery-wrapper-link",
+        "media-gallery-bg-wrapper",
+        "media-gallery-bg"
+      ],
+      "scriptHints": [],
+      "generators": []
+    },
+    {
+      "domain": "instagram.com",
+      "url": "https://www.instagram.com/",
+      "bytes": 468511,
+      "topClasses": [
+        "x1n2onr6",
+        "x9f619",
+        "x78zum5",
+        "xdt5ytf",
+        "x193iq5w",
+        "x2lah0s",
+        "x1ja2u2z",
+        "x1plvlek",
+        "xryxfnj",
+        "xexx8yu",
+        "x18d9i69",
+        "xyri2b"
+      ],
+      "scriptHints": [],
+      "generators": []
+    },
+    {
+      "domain": "mail.ru",
+      "url": "https://mail.ru/",
+      "bytes": 179273,
+      "topClasses": [
+        "newstabs_newstabs__tab__163ad8c2",
+        "headline_headline__projectsitem__f3183b32",
+        "headline_headline__projectsitemlink__f3183b32",
+        "headline_headline__projectsitem_hidden__f3183b32",
+        "widgetsline_widgetsline__block__d537864d",
+        "elevationcontainer_elevationcontainer__b9ac2fc7",
+        "elevationcontainer_elevationcontainer__hover__b9ac2fc7",
+        "weather_temp__img__846ab249",
+        "rate_rate__60fc297c",
+        "rate_rate__icon__60fc297c",
+        "rate_rate__currency__60fc297c",
+        "rate_rate__change__60fc297c"
+      ],
+      "scriptHints": [
+        "googletagmanager"
+      ],
+      "generators": []
+    },
+    {
+      "domain": "fbcdn.net",
+      "url": "https://www.facebook.com/",
+      "bytes": 420681,
+      "topClasses": [
+        "x9f619",
+        "x193iq5w",
+        "x1n2onr6",
+        "x78zum5",
+        "x1ja2u2z",
+        "xdt5ytf",
+        "xeuugli",
+        "x2lah0s",
+        "xo1l8bm",
+        "x1lliihq",
+        "xyri2b",
+        "x1c1uobl"
+      ],
+      "scriptHints": [],
+      "generators": []
+    },
+    {
+      "domain": "twitter.com",
+      "url": "https://x.com/",
+      "bytes": 265392,
+      "topClasses": [
+        "r-zchlnj",
+        "r-1d2f490",
+        "r-1p0dtai",
+        "r-ipm5af",
+        "r-4qtqp9",
+        "r-bcqeeo",
+        "r-qvutc0",
+        "css-175oi2r",
+        "r-yyyyoo",
+        "r-dnmrzs",
+        "r-lrvibr",
+        "r-wy61xf"
+      ],
+      "scriptHints": [],
+      "generators": []
+    },
+    {
+      "domain": "dzen.ru",
+      "url": "https://sso.passport.yandex.ru/push?uuid=f766575f-975e-408e-b32c-270c0ee9acc3&retpath=https%3A%2F%2Fdzen.ru%2F%3Fis_autologin_ya%3Dtrue",
+      "bytes": 2854,
+      "topClasses": [],
+      "scriptHints": [],
+      "generators": []
+    },
+    {
+      "domain": "linkedin.com",
+      "url": "https://www.linkedin.com/",
+      "bytes": 141451,
+      "topClasses": [
+        "flex",
+        "font-sans",
+        "mr-1",
+        "items-center",
+        "!font-regular",
+        "text-sm",
+        "text-xs",
+        "btn-md",
+        "mb-1.5",
+        "babybear:btn-sm",
+        "w-fit",
+        "float-left"
+      ],
+      "scriptHints": [],
+      "generators": []
+    },
+    {
+      "domain": "live.com",
+      "url": "https://outlook.live.com/mail/",
+      "bytes": 14059,
+      "topClasses": [
+        "ms-font-s",
+        "disabletextselection",
+        "ms-fabric--isfocushidden"
+      ],
+      "scriptHints": [],
+      "generators": []
+    },
+    {
+      "domain": "office.com",
+      "url": "https://www.office.com/",
+      "bytes": 255559,
+      "topClasses": [
+        "js-nav-menu",
+        "single-link",
+        "js-subm-uhf-nav-link",
+        "c-uhff-link",
+        "nested-menu",
+        "f-sub-menu",
+        "c-list",
+        "f-bare",
+        "c-glyph",
+        "uhf-menu-item",
+        "c-uhff-nav-group",
+        "c-heading-4"
+      ],
+      "scriptHints": [
+        "clarity"
+      ],
+      "generators": []
+    },
+    {
+      "domain": "hicloudcam.com",
+      "url": "https://www.ezviz.com/page/ezviz-app",
+      "bytes": 179315,
+      "topClasses": [
+        "flexbox",
+        "cls-1",
+        "j_menu-sub",
+        "menu-sub__blk-items",
+        "menu-sub__blk-item",
+        "menu-sub__blk-link",
+        "footer-top__item-li",
+        "footer-top__item-link",
+        "swiper-slide",
+        "lazyload",
+        "c-flex",
+        "nav-menu__cate-items"
+      ],
+      "scriptHints": [],
+      "generators": []
+    },
+    {
+      "domain": "amazon.com",
+      "url": "https://www.amazon.com/",
+      "bytes": 2007,
+      "topClasses": [],
+      "scriptHints": [],
+      "generators": []
+    },
+    {
+      "domain": "azure.com",
+      "url": "https://azure.microsoft.com/en-us",
+      "bytes": 477161,
+      "topClasses": [
+        "d-flex",
+        "js-nav-menu",
+        "align-items-start",
+        "single-link",
+        "js-subm-uhf-nav-link",
+        "flex-column",
+        "ocr-img",
+        "media__asset",
+        "d-contents",
+        "action",
+        "link",
+        "link__text"
+      ],
+      "scriptHints": [
+        "jquery"
+      ],
+      "generators": []
+    },
+    {
+      "domain": "wikipedia.org",
+      "url": "https://www.wikipedia.org/",
+      "bytes": 118282,
+      "topClasses": [
+        "jsl10n",
+        "sprite",
+        "other-project",
+        "other-project-link",
+        "other-project-icon",
+        "other-project-text",
+        "other-project-title",
+        "other-project-tagline",
+        "central-featured-lang",
+        "link-box",
+        "langlist",
+        "hlist"
+      ],
+      "scriptHints": [],
+      "generators": []
+    },
+    {
+      "domain": "bing.com",
+      "url": "https://www.bing.com/?toWww=1&redig=9100D31A8EFB4C90B6F186547715B951",
+      "bytes": 202589,
+      "topClasses": [
+        "overflow_item",
+        "icon",
+        "text",
+        "item",
+        "try_exp",
+        "scope",
+        "tooltip",
+        "hpl",
+        "id_button",
+        "tool-item",
+        "icon_area",
+        "vs_rowitem"
+      ],
+      "scriptHints": [],
+      "generators": []
+    },
+    {
+      "domain": "github.com",
+      "url": "https://github.com/",
+      "bytes": 564717,
+      "topClasses": [
+        "octicon",
+        "primer_brand__text-module__text___pechn",
+        "primer_brand__text-module__text--antialiased___fydxq",
+        "primer_brand__text-module__text-font--mona-sans___gpzsg",
+        "primer_brand__text-module__text--default___dchoe",
+        "navlink-module__link__eg3d4",
+        "navlink-module__title__q7t0p",
+        "primer_brand__text-module__text--200___xaigt",
+        "linkcolumn-module__item__nrsne",
+        "linkcolumn-module__link__pciyj",
+        "primer_brand__text-module__text--300___tbqtb",
+        "primer_brand__text-module__text--muted___ltava"
+      ],
+      "scriptHints": [
+        "react"
+      ],
+      "generators": []
+    },
+    {
+      "domain": "whatsapp.net",
+      "url": "https://www.whatsapp.com/",
+      "bytes": 267288,
+      "topClasses": [
+        "_afo9",
+        "_9vd5",
+        "_9sep",
+        "_9vg3",
+        "_9vcv",
+        "_advp",
+        "_aeam",
+        "_aj1b",
+        "_aenq",
+        "_asnw",
+        "_agnt",
+        "_9tar"
+      ],
+      "scriptHints": [],
+      "generators": []
+    },
+    {
+      "domain": "doubleclick.net",
+      "url": "https://marketingplatform.google.com/about/enterprise/",
+      "bytes": 125234,
+      "topClasses": [
+        "h-c-headline",
+        "h-c-footer__link",
+        "h-c-footer__site-links-list-item",
+        "h-c-headline--four",
+        "h-c-icon",
+        "h-c-carousel__item",
+        "gmp-circle-icon",
+        "highlights-module__icon",
+        "gmp-icon--accent",
+        "glue-o-pagination__button",
+        "h-c-grid__col",
+        "h-c-tile__link"
+      ],
+      "scriptHints": [
+        "angular"
+      ],
+      "generators": []
+    },
+    {
+      "domain": "fastly.net",
+      "url": "https://www.fastly.com/",
+      "bytes": 632532,
+      "topClasses": [
+        "_1uhd5eyc",
+        "_1uhd5eyd",
+        "_1v7xp38g",
+        "v4rwel7",
+        "jxvqufi",
+        "jxvqufj",
+        "stroke-theme",
+        "_1j2kes810y",
+        "nbbs0e1",
+        "_6twr8h5",
+        "_1j2kes8k",
+        "_8tvhacf"
+      ],
+      "scriptHints": [],
+      "generators": [
+        "gatsby 5.16.1"
+      ]
+    },
+    {
+      "domain": "wordpress.org",
+      "url": "https://wordpress.org/",
+      "bytes": 158250,
+      "topClasses": [
+        "wp-block-navigation-item",
+        "wp-block-navigation-item__content",
+        "wp-block-navigation-item__label",
+        "wp-block-group",
+        "wp-block-navigation-link",
+        "is-layout-flow",
+        "wp-block-image",
+        "wp-block-paragraph",
+        "is-layout-flex",
+        "size-full",
+        "wp-block-column",
+        "wp-block-column-is-layout-flow"
+      ],
+      "scriptHints": [
+        "wp-content"
+      ],
+      "generators": [
+        "wordpress 7.1-alpha-62631"
+      ]
+    },
+    {
+      "domain": "netflix.com",
+      "url": "https://www.netflix.com/",
+      "bytes": 800000,
+      "topClasses": [],
+      "scriptHints": [
+        "onetrust"
+      ],
+      "generators": []
+    },
+    {
+      "domain": "sharepoint.com",
+      "url": "https://www.microsoft.com/en-us/microsoft-365/sharepoint/collaboration?ms.officeurl=sharepoint",
+      "bytes": 470907,
+      "topClasses": [
+        "d-flex",
+        "ocr-img",
+        "media__asset",
+        "ocr-icon",
+        "d-inline-flex",
+        "align-items-center",
+        "list-item",
+        "list-item__inner",
+        "flex-column",
+        "block-items-list__item",
+        "list-item__leading",
+        "align-items-start"
+      ],
+      "scriptHints": [
+        "jquery"
+      ],
+      "generators": []
+    },
+    {
+      "domain": "skype.com",
+      "url": "https://teams.live.com/free?source=skype",
+      "bytes": 61178,
+      "topClasses": [
+        "gather-hide-when-media-mobile",
+        "gather-bento-grid__item",
+        "gather-bento-grid__item-header",
+        "gather-icon-circle",
+        "gather-icon-with-heading__text",
+        "gather-bento-image",
+        "gather-button",
+        "gather-paid-badge",
+        "gather-button--small",
+        "gather-button--primary",
+        "gather-button--large",
+        "gather-bento-image--wide"
+      ],
+      "scriptHints": [],
+      "generators": []
+    },
+    {
+      "domain": "youtu.be",
+      "url": "https://www.youtube.com/?feature=youtu.be",
+      "bytes": 770145,
+      "topClasses": [
+        "skeleton-bg-color",
+        "text-shell",
+        "video-details",
+        "details",
+        "rich-grid-media-skeleton",
+        "rich-thumbnail",
+        "channel-avatar",
+        "details-text-shell",
+        "rich-video-title",
+        "rich-video-meta",
+        "flex-1",
+        "video-skeleton"
+      ],
+      "scriptHints": [
+        "next",
+        "youtube"
+      ],
+      "generators": []
+    },
+    {
+      "domain": "digicert.com",
+      "url": "https://www.digicert.com/",
+      "bytes": 67005,
+      "topClasses": [
+        "section-metadata",
+        "cards",
+        "fade-up",
+        "testimonial",
+        "full-bleed",
+        "btn-text-card",
+        "feature",
+        "media-right",
+        "white-bg-card",
+        "banner",
+        "hero",
+        "icon-left-card"
+      ],
+      "scriptHints": [],
+      "generators": []
+    }
+  ]
+}

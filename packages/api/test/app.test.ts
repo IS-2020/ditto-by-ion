@@ -161,3 +161,14 @@ test("GET /healthz", async () => {
   assert.equal(res.status, 200);
   assert.deepEqual(await res.json(), { ok: true });
 });
+
+test("GET /v1/patterns serves the frozen pattern catalog", async () => {
+  const app = createApp({ backend: new InMemoryBackend({ store: new InMemoryStore(1000), runJob: fakeRunJob }) });
+  const res = await app.request("/v1/patterns");
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.ok(body.total >= 40);
+  assert.ok(Array.isArray(body.kinds) && body.kinds.includes("carousel"));
+  assert.ok(body.byKind.carousel?.some((p: { id: string }) => p.id === "carousel_swiper"));
+  assert.match(body.catalogHash, /^[a-f0-9]{64}$/);
+});

@@ -84,6 +84,7 @@ async function main(): Promise<void> {
           }
         : undefined,
     assertUrl: env.ssrfEnabled ? async (url) => void (await assertPublicUrl(url, { allowLoopback: env.ssrfAllowLoopback })) : undefined,
+    captureCacheDir: env.captureCacheDir || undefined,
   });
 
   serve({ fetch: app.fetch, port: env.port }, (info) => {

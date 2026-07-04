@@ -6,6 +6,33 @@ so minor/patch semantics are not yet guaranteed.
 
 ## [Unreleased]
 
+### Added — Pattern catalog, quality pipeline, and deploy readiness
+
+- Expanded frozen pattern catalog from 49 → 156 signatures (v4): analytics, consent,
+  chat, auth, scheduling, top-site design systems (AEM, BBC, GitHub Primer, Airbnb,
+  Nike, Samsung, Google Material).
+- **`compiler/scripts/mine-top-site-patterns.mjs`** — Tranco top-N homepage + subpage
+  miner with curated additions, script-hint DOM candidates, and denylisted generic
+  prefixes (`--apply=true` merges into catalog).
+- **`compiler/scripts/validate-pattern-catalog.mjs`** — CI validation (unique ids,
+  lock pin, generic-prefix denylist).
+- **`applyPatternHints.ts`** — 50+ pattern fix bundles (carousels, consent dismissals,
+  chat/captcha hiding, scroll-animation freeze, Calendly placeholders).
+- **Tier G audit repair loop** — gate failure → structured defect → targeted regen
+  in `validate/auditRepair.ts` (default on for `hard`/`stage2` verify tiers).
+- **Quality tiers** (`production` / `dev` / `draft`) with cache reuse, parallel
+  viewport capture, adaptive settle, and async verify UI.
+- **Pattern catalog API** (`GET /v1/patterns`) with mtime cache invalidation; UI
+  refetches on tab open.
+- **`.github/workflows/ci.yml`** — typecheck, catalog pin, tests, Postgres migrate.
+- **`scripts/smoke-deploy.sh`** — docker-compose pre-deploy smoke test.
+
+### Fixed
+
+- YC clone `mediacards` ReferenceError (prop naming alignment in `generate/app.ts`).
+- App preview reliability (server-side `previewReady`, event pagination, tab refocus retry).
+- Pattern catalog stale cache in long-running API processes.
+
 ### Added — Open-source readiness
 
 - Added support, release, responsible-use, CODEOWNERS, and gitattributes files.

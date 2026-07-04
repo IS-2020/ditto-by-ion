@@ -5,11 +5,12 @@ import { z } from "zod";
 import { RESPONSE_ALREADY_SENT } from "@hono/node-server/utils/response";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { normalizeCloneRequestOptions } from "@cloner/core";
+import { normalizeCloneRequestOptions, checkCaptureCache } from "@cloner/core";
 import type { Backend } from "./backend.js";
 import { createMcpServer } from "./mcp.js";
 import { apiKeyAuth, hashApiKey, rateLimit, type AuthConfig } from "./auth.js";
 import { UI_HTML } from "./ui.js";
+import { loadPatternsPayload } from "./patterns.js";
 
 const OptionsSchema = z
   .object({
@@ -33,6 +34,7 @@ const OptionsSchema = z
     components: z.boolean().optional(),
     motion: z.boolean().optional(),
     noCache: z.boolean().optional(),
+    qualityTier: z.enum(["production", "dev", "draft"]).optional(),
   })
   .strict();
 
@@ -84,6 +86,8 @@ export type AppDeps = {
   signupCorsOrigins?: string[];
   /** SSRF guard run on submit (omit = no check — set in production). Throws to reject. */
   assertUrl?: (url: string) => Promise<void>;
+  /** Entry capture cache directory (for /v1/cache/check). */
+  captureCacheDir?: string;
 };
 
 /** Build the Hono app over a Backend. The in-memory backend (M1) runs clones inline
@@ -107,6 +111,22 @@ export function createApp(deps: AppDeps): Hono {
   }
 
   app.get("/healthz", (c) => c.json({ ok: true }));
+
+  app.get("/v1/patterns", (c) => c.json(loadPatternsPayload()));
+
+  app.get("/v1/cache/check", (c) => {
+    const url = c.req.query("url");
+    if (!url) return c.json({ error: "url query required" }, 400);
+    try {
+      new URL(url);
+    } catch {
+      return c.json({ error: "invalid url" }, 400);
+    }
+    return c.json(checkCaptureCache(deps.captureCacheDir, url));
+  });
+
+  /** Standalone pattern catalog page (same data as the in-app tab). */
+  app.get("/patterns", (c) => c.redirect("/", 302));
 
   // Minimal dev/test UI (self-contained; talks to the same-origin /v1 API). The
   // API surface itself stays the product — this page is a testing convenience.

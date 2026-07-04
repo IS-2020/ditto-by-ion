@@ -28,6 +28,7 @@ export type CloneOptions = {
                          // faster production clone (validation-only artifact — generation ignores pixels).
   breakpoints?: boolean; // discover real responsive band edges via a viewport sweep (default on; evidence-only
                          // today — single-viewport service clones skip it to save ~4s).
+  viewportConcurrency?: number; // parallel viewport capture (2–3 pages; default 1 = serial resize)
   log?: (event: Record<string, unknown>) => void;
 };
 
@@ -439,7 +440,7 @@ export async function runClone(opts: CloneOptions): Promise<CloneResult> {
     // For simplicity the IR is built from reuseSource and other artifacts written into runDir.
     copySourceRef(opts.reuseSource, sourceDir);
   } else {
-    capture = await captureSite({ url: opts.url, outDir: sourceDir, viewports: captureViewports, interactions: opts.interactions, motion: opts.motion, screenshots: opts.screenshots, breakpoints: opts.breakpoints, log: logBoth });
+    capture = await captureSite({ url: opts.url, outDir: sourceDir, viewports: captureViewports, interactions: opts.interactions, motion: opts.motion, screenshots: opts.screenshots, breakpoints: opts.breakpoints, viewportConcurrency: opts.viewportConcurrency, log: logBoth });
   }
   // NOTE: distinct from captureSite's per-viewport `captured` events — this marks
   // the END of all capture work (incl. asset fallback + SEO fetches + evidence
@@ -454,6 +455,14 @@ export async function runClone(opts: CloneOptions): Promise<CloneResult> {
   // 2-5. Normalize → infer → generate → emit (shared deterministic pipeline)
   const gen = generateAll({ sourceDir, capture, viewports, sampleViewports: captureViewports, url: opts.url, outDir: generatedDir });
   logBoth({ event: "ir_built", nodes: gen.ir.doc.nodeCount });
+  logBoth({
+    event: "patterns_resolved",
+    matched: gen.patternHints.matches.length,
+    platforms: gen.patternHints.platforms,
+    flags: gen.patternHints.flags,
+    simpleStatic: gen.patternHints.simpleStatic,
+    ids: gen.patternHints.matches.map((m) => m.id),
+  });
   logBoth({ event: "inferred", sections: gen.sections.length, assets: gen.assetGraph.entries.length, fonts: gen.fontGraph.entries.length });
   logBoth({ event: "generated", assetsCopied: gen.assetsCopied, assetsMissing: gen.assetsMissing.length });
 

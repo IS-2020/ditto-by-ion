@@ -79,10 +79,11 @@ export class InMemoryBackend implements Backend {
     }
   }
 
-  async events(jobId: string): Promise<Array<Record<string, unknown>> | null> {
+  async events(jobId: string, after = 0): Promise<Array<Record<string, unknown>> | null> {
     const rec = this.deps.store.get(jobId);
     if (!rec) return null;
-    return rec.events ?? [];
+    const all = rec.events ?? [];
+    return after > 0 ? all.slice(after) : all;
   }
 
   async status(jobId: string): Promise<JobView | null> {

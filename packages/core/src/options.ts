@@ -1,4 +1,5 @@
 import type { CloneFramework, CloneMode, CloneOptions, CloneStyling } from "./types.js";
+import { applyQualityTier } from "./qualityTiers.js";
 
 export type ResolvedCloneOptions = CloneOptions & {
   mode: CloneMode;
@@ -41,21 +42,20 @@ export function normalizeCloneRequestOptions(options: CloneOptions = {}): CloneO
 /** Resolve options for the compiler adapter. This is where automatic internal
  * defaults live; callers should not need to choose these in normal use. */
 export function resolveCloneOptions(options: CloneOptions = {}): ResolvedCloneOptions {
-  const mode = resolveCloneMode(options);
-  const styling = resolveCloneStyling(options);
-  const framework = resolveCloneFramework(options);
+  const tiered = applyQualityTier(options);
+  const mode = resolveCloneMode(tiered);
+  const styling = resolveCloneStyling(tiered);
+  const framework = resolveCloneFramework(tiered);
   return {
-    ...options,
+    ...tiered,
     mode,
     styling,
     framework,
     multiPage: mode === "multi",
     humanizeMode: styling,
-    interactions: options.interactions ?? true,
-    components: options.components ?? true,
-    motion: options.motion ?? true,
-    // Preview builds are the single-page product surface; multi-page exports can be
-    // large, so previewing a site clone stays an explicit opt-in.
-    preview: options.preview ?? mode === "single",
+    interactions: tiered.interactions ?? true,
+    components: tiered.components ?? true,
+    motion: tiered.motion ?? true,
+    preview: tiered.preview ?? mode === "single",
   };
 }

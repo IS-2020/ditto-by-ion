@@ -2730,7 +2730,19 @@ export function keyframesCss(ir: IR, assetMap: Map<string, string>, includeNode?
  *  per-node CSS emitter (generateCss) and the semantic class-map emitter (classMap.ts).
  *  `includeNode` scopes which nodes are emitted (multi-route shared layout) while still
  *  recursing so inheritance diffing against parents stays correct. */
+/** Memoize per-IR rule collection — tailwind + css paths share the same walk in one generate pass. */
+const nodeRulesMemo = new WeakMap<IR, Map<string, Map<string, NodeRule>>>();
+
+function nodeRulesMemoKey(reflow: boolean, forceCenter?: Set<string>, includeNode?: (id: string) => boolean, tokenResolver?: TokenResolver): string {
+  return `${reflow ? 1 : 0}|${forceCenter ? [...forceCenter].sort().join(",") : ""}|${includeNode ? 1 : 0}|${tokenResolver ? 1 : 0}`;
+}
+
 export function collectNodeRules(ir: IR, assetMap: Map<string, string>, includeNode?: (id: string) => boolean, colorVar?: (value: string) => string | null, tokenResolver?: TokenResolver, reflow = false, forceCenter?: Set<string>): Map<string, NodeRule> {
+  const mk = nodeRulesMemoKey(reflow, forceCenter, includeNode, tokenResolver);
+  let byKey = nodeRulesMemo.get(ir);
+  if (!byKey) { byKey = new Map(); nodeRulesMemo.set(ir, byKey); }
+  const hit = byKey.get(mk);
+  if (hit) return hit;
   const bands = computeBands(ir.doc.viewports, ir.doc.canonicalViewport);
   const baseVp = ir.doc.canonicalViewport;
   const rules = new Map<string, NodeRule>();
@@ -3006,6 +3018,7 @@ export function collectNodeRules(ir: IR, assetMap: Map<string, string>, includeN
   };
   // The root's containing block is the viewport-filling <html>, so it starts the fluid chain.
   walk(ir.root, undefined, true, undefined, undefined, false);
+  byKey.set(mk, rules);
   return rules;
 }
 

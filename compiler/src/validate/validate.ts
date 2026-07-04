@@ -22,6 +22,13 @@ import { gate2bHtmlWitness } from "../materialize/html-witness.js";
 import { gate3bIrVsWitness, gate3cCloneVsWitness } from "./domWitness.js";
 import { gate6bManifestHash } from "./manifestGate.js";
 import { pixelAuditGate } from "../audit/auditGate.js";
+import {
+  defectsFromGates,
+  planRepairHints,
+  readAuditRepairHints,
+  repairableFailures,
+  writeAuditRepairHints,
+} from "./auditRepair.js";
 import { MIRROR_MOUNT } from "../generate/mirror.js";
 
 /** Widths the capture never sampled — the midpoint of every adjacent captured pair (inside each
@@ -61,7 +68,14 @@ const VITE_DETERMINISM_FILES = [
   "app/package.json", "app/tsconfig.json",
 ];
 
-export async function validateRun(runDir: string, opts?: { harnessDir?: string; tier?: string; log?: (e: Record<string, unknown>) => void }): Promise<Report> {
+export async function validateRun(runDir: string, opts?: {
+  harnessDir?: string;
+  tier?: string;
+  /** Tier G: gate failure → structured defect → targeted regen (default on for hard/stage2). */
+  repairLoop?: boolean;
+  repairBudget?: number;
+  log?: (e: Record<string, unknown>) => void;
+}): Promise<Report> {
   const log = opts?.log ?? (() => {});
   const harnessDir = opts?.harnessDir ?? DEFAULT_HARNESS;
   const sourceDir = join(runDir, "source");
@@ -225,6 +239,49 @@ export async function validateRun(runDir: string, opts?: { harnessDir?: string; 
     style: gate4, layout: gate5, determinism: gate6, manifest_hash: gate6b,
     pollution, perceptual, visual_audit: visualAudit, responsive, interaction: interactionGate, motion: motionGate,
   };
+
+  // ---- Tier G: audit-driven repair loop (layout/style/perceptual convergence) ----
+  const repairLoop = opts?.repairLoop ?? (opts?.tier === "hard" || opts?.tier === "stage2");
+  const repairBudget = opts?.repairBudget ?? 3;
+  if (repairLoop && build.ok && build.outDir && repairableFailures(gates)) {
+    let outDir = build.outDir;
+    for (let ri = 0; ri < repairBudget; ri++) {
+      if (!repairableFailures(gates)) break;
+      const defects = defectsFromGates(gates);
+      const hints = planRepairHints(defects, readAuditRepairHints(sourceDir), ri + 1);
+      if (!hints) break;
+      writeAuditRepairHints(sourceDir, hints);
+      generateAll({ sourceDir, capture, viewports, sampleViewports: capture.viewports, url, outDir: generatedDir });
+      const reb = buildApp(appDir, harnessDir);
+      if (!reb.ok || !reb.outDir) break;
+      outDir = reb.outDir;
+      const srv = await serveStatic(outDir);
+      try {
+        const r2 = await renderApp({ url: srv.url + "/", viewports, renderedDir });
+        snapshots = r2.snapshots;
+        runtimeErrors = r2.runtimeErrors;
+        httpStatus = r2.httpStatus;
+        failedResources = r2.failedResources;
+        probeSnaps = await measureProbeWidths({ url: srv.url + "/", widths: probeWidthsFor(viewports) });
+      } finally {
+        await srv.close();
+      }
+      const ir2 = buildIR(sourceDir, viewports, { motion: !!capture.motion });
+      const sections2 = detectSections(ir2);
+      gates.style = gate4Style(ir2, snapshots, viewports);
+      gates.layout = gate5Layout(ir2, snapshots, sections2, viewports, reflowOpt || !!hints.enableReflow);
+      gates.perceptual = screenshotDiff(sourceDir, renderedDir, viewports, validationDir, opts?.tier);
+      gates.visual_audit = pixelAuditGate({
+        sourceDir,
+        renderedDir,
+        viewports,
+        outDir: join(validationDir, "audit"),
+        threshold: PERCEPTUAL_THRESHOLD[opts?.tier ?? "hard"] ?? 0.14,
+      });
+      gates.responsive = gateResponsive(ir2, probeSnaps, viewports);
+      log({ event: "audit_repair", iter: ri + 1, defects: defects.length, fixes: hints.generateFixes });
+    }
+  }
 
   const report = buildReport({ sourceUrl: url, tier: opts?.tier ?? "unknown", compilerVersion: COMPILER_VERSION, gates });
   writeJSON(join(validationDir, "report.json"), report);

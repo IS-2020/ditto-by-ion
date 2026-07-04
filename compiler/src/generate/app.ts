@@ -1594,8 +1594,17 @@ export function camelVar(v: string): string {
 }
 
 function cleanPropBase(value: string): string {
-  const c = value.replace(/[^a-zA-Z0-9_$]/g, "");
-  if (!c) return "";
+  const parts = value.split(/[^a-zA-Z0-9]+/).filter(Boolean);
+  if (!parts.length) return "";
+  const c = parts
+    .map((part, i) => (i === 0 ? part.charAt(0).toLowerCase() + part.slice(1) : part.charAt(0).toUpperCase() + part.slice(1)))
+    .join("");
+  return /^[a-zA-Z_$]/.test(c) ? c : "";
+}
+
+/** Legacy prop base: strip non-alphanumerics without camelCase (pre-fix bug source). */
+function legacyCleanPropBase(value: string): string {
+  const c = value.replace(/[^a-zA-Z0-9]/g, "");
   return /^[a-zA-Z_$]/.test(c) ? c.charAt(0).toLowerCase() + c.slice(1) : "";
 }
 
@@ -2009,6 +2018,16 @@ function rewriteComponentDataMapsInBody(body: string, compName: string, prop: st
   return out;
 }
 
+/** Force `.map` refs before `<Comp` to use the resolved section prop (fixes stale/legacy names). */
+function alignMapCallsToComponentProps(body: string, propByComp: Map<string, string>): string {
+  let out = body;
+  for (const [compName, prop] of propByComp) {
+    const re = new RegExp(`\\{([a-zA-Z_$][\\w$]*)\\.map\\(([^)]*)\\)\\s*=>\\s*<${compName}\\b`, "g");
+    out = out.replace(re, `{${prop}.map($2) => <${compName}`);
+  }
+  return out;
+}
+
 function rewriteDataMapRefs(
   body: string,
   decl: { varName: string; compName: string; dataModel?: string },
@@ -2023,6 +2042,10 @@ function rewriteDataMapRefs(
   if (decl.dataModel) {
     aliases.add(`${pascalIdent(decl.dataModel, decl.compName)}Data`);
     aliases.add(`${decl.dataModel.charAt(0).toUpperCase()}${decl.dataModel.slice(1)}Data`);
+    const legacy = legacyCleanPropBase(decl.dataModel);
+    if (legacy) aliases.add(legacy);
+    const modern = cleanPropBase(decl.dataModel);
+    if (modern && modern !== legacy) aliases.add(modern);
   }
   let out = body;
   for (const alias of aliases) {
@@ -2070,10 +2093,22 @@ export function sectionFiles(sreg: SectionRegistry | undefined, reg: ComponentRe
     const dataParamParts: string[] = [];
     let body = jsx;
     for (const v of usedData) {
-      const p = dataProps.get(v) ?? camelVar(v);
+      const binding = contentBindings.get(v);
+      const p = binding ? binding.exportName : (dataProps.get(v) ?? camelVar(v));
       const decl = byVar.get(v);
       body = decl ? rewriteDataMapRefs(body, decl, p, reg?.dataDecls ?? []) : p !== v ? body.split(`${v}.map(`).join(`${p}.map(`) : body;
-      const binding = contentBindings.get(v);
+      // Repair stale prop names from older cleanPropBase (e.g. mediacards vs mediaCardData).
+      const staleNames = new Set<string>();
+      const dp = dataProps.get(v);
+      if (dp) staleNames.add(dp);
+      const model = decl?.dataModel ?? "";
+      if (model) {
+        staleNames.add(legacyCleanPropBase(model));
+        staleNames.add(cleanPropBase(model));
+      }
+      for (const stale of staleNames) {
+        if (stale && stale !== p) body = body.split(`${stale}.map(`).join(`${p}.map(`);
+      }
       if (binding) {
         const alias = safeIdent(`${p}Content`, "contentData");
         contentImports.push(`${binding.exportName} as ${alias}`);
@@ -2093,12 +2128,14 @@ export function sectionFiles(sreg: SectionRegistry | undefined, reg: ComponentRe
       const decl = byVar.get(v);
       if (!decl) continue;
       if ((compUseCount.get(decl.compName) ?? 0) === 1) {
-        propByComp.set(decl.compName, dataProps.get(v) ?? camelVar(v));
+        const binding = contentBindings.get(v);
+        propByComp.set(decl.compName, binding ? binding.exportName : (dataProps.get(v) ?? camelVar(v)));
       }
     }
     for (const [compName, prop] of propByComp) {
       body = rewriteComponentDataMapsInBody(body, compName, prop);
     }
+    body = alignMapCallsToComponentProps(body, propByComp);
     const cta = ctaContentTemplate(name, body);
     if (cta) {
       body = cta.body;

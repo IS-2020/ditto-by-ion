@@ -15,7 +15,9 @@ import { buildManifest } from "./manifest.js";
 import { buildSeoInventory, seoInventoryToMarkdown, type SeoInventory } from "./seo.js";
 import { generateMirror, MIRROR_MOUNT } from "./mirror.js";
 import { resolvePatternHints, type PatternHints } from "../knowledge/patternIndex.js";
+import { resolveFixes, generateFixCss } from "../knowledge/applyPatternHints.js";
 import { readLayoutRepairHints } from "./layoutRepair.js";
+import { readAuditRepairHints, mergeAuditRepairCss } from "../validate/auditRepair.js";
 import { writeJSON, writeText, readJSON, fileExists } from "../util/fsx.js";
 import type { CaptureResult } from "../capture/capture.js";
 
@@ -67,6 +69,12 @@ export function generateAll(opts: {
   const tokens = extractTokens(ir);
   // Pattern hints: frozen-catalog signature scan over the IR (deterministic; Gate 6-listed).
   const patternHints = resolvePatternHints(ir);
+  const patternFixes = resolveFixes(patternHints);
+  writeJSON(join(sourceDir, "pattern-fixes.json"), {
+    matchedIds: patternFixes.matchedIds,
+    capture: [...patternFixes.capture],
+    generate: [...patternFixes.generate],
+  });
   const assetGraph = buildAssetGraph(capture);
   const fontGraph = buildFontGraph(capture.fontFaces, assetGraph, url);
   const seoInventory = buildSeoInventory(ir, assetGraph, capture);
@@ -74,7 +82,11 @@ export function generateAll(opts: {
   // Stage 3.5: semantic color tokens (load-bearing). The palette's :root supersedes
   // the decorative color group; ditto.css references var(--token) for colors.
   const palette = buildColorPalette(ir);
-  const tokensCss = (palette.css ? palette.css + "\n" : "") + tokensToCss(tokens, true);
+  const auditRepair = readAuditRepairHints(sourceDir);
+  const mergedGenerateFixes = new Set([...patternFixes.generate, ...(auditRepair?.generateFixes ?? [])]);
+  let fixCss = generateFixCss(mergedGenerateFixes);
+  fixCss = mergeAuditRepairCss(auditRepair, fixCss);
+  const tokensCss = (palette.css ? palette.css + "\n" : "") + (fixCss ? fixCss + "\n" : "") + tokensToCss(tokens, true);
   const tokenResolver = buildTokenResolver(tokens);
   const primitives = recognizePrimitives(ir);
   const recipeReport = buildRecipeReport(ir, sections, primitives, patternHints);
@@ -89,13 +101,14 @@ export function generateAll(opts: {
   // regen) makes the SAME choice — keeping output deterministic across processes.
   const optPath = join(sourceDir, "clone-options.json");
   const cloneOpts = fileExists(optPath) ? readJSON<{ components?: boolean; humanizeMode?: "tailwind" | "css"; framework?: AppFramework; reflow?: boolean }>(optPath) : {};
+  const reflow = !!cloneOpts.reflow || !!auditRepair?.enableReflow;
   const components = !!cloneOpts.components;
   const humanizeMode = cloneOpts.humanizeMode; // undefined → generateApp default ("tailwind")
   const layoutRepair = readLayoutRepairHints(sourceDir);
   const forceCenter = layoutRepair?.forceCenterCids?.length
     ? new Set(layoutRepair.forceCenterCids)
     : undefined;
-  const gen = generateApp({ ir, assetGraph, fontGraph, appDir, sourceDir, sourceUrl: url, seoInventory, colorVar: palette.varForColor, tokenResolver, primitives, recipeReport, interaction: capture.interaction, pseudoStates: capture.pseudoStates, rejectedSpecs, components, humanizeMode, framework: cloneOpts.framework, motion: capture.motion, reflow: !!cloneOpts.reflow, forceCenter }, tokensCss);
+  const gen = generateApp({ ir, assetGraph, fontGraph, appDir, sourceDir, sourceUrl: url, seoInventory, colorVar: palette.varForColor, tokenResolver, primitives, recipeReport, interaction: capture.interaction, pseudoStates: capture.pseudoStates, rejectedSpecs, components, humanizeMode, framework: cloneOpts.framework, motion: capture.motion, reflow, forceCenter }, tokensCss);
   const mat = materializeAssets(assetGraph, sourceDir, join(appDir, "public"));
 
   // Static HTML mirror at /static/ (served from app/public/static/).

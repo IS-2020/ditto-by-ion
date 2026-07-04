@@ -70,8 +70,11 @@ function captureCompatible(dir: string, options: ResolvedCloneOptions, needScree
     const requested = options.viewports ?? [375, 768, 1280, 1920];
     const captured = new Set(cap.viewports ?? []);
     if (!requested.every((vp) => captured.has(vp))) return false;
-    if (!!cap.interaction !== options.interactions) return false;
-    if (!!cap.motion !== options.motion) return false;
+    // Simple static pages skip motion/interaction probes — parity is viewport + screenshot evidence.
+    if (!cap.simpleStatic) {
+      if (!!cap.interaction !== options.interactions) return false;
+      if (!!cap.motion !== options.motion) return false;
+    }
     if (needScreenshots && !requested.every((vp) => existsSync(join(dir, "screenshots", `${vp}.png`)))) return false;
     return true;
   } catch {
@@ -183,6 +186,7 @@ export async function runCloneJob(input: RunCloneJobInput): Promise<CloneJobResu
         humanizeMode: options.styling,
         framework: options.framework,
         screenshots: captureValidationArtifacts,
+        viewportConcurrency: options.viewportConcurrency,
         // The band-edge sweep costs ~4s and its output has no consumer for a
         // single-viewport clone — skip it on that fast path.
         breakpoints: (options.viewports?.length ?? 4) > 1,

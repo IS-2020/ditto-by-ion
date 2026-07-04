@@ -7,6 +7,8 @@ import { discoverBreakpoints } from "./breakpoints.js";
 import { writeJSON, writeJSONCompact, writeBytes, ensureDir } from "../util/fsx.js";
 import { sha1_12, round } from "../util/canonical.js";
 import { scrollForLazyLoad, preScreenshotSettle } from "../settle/recipe.js";
+import { settleBudgetMs, QUICK_PATTERN_PROBE } from "./adaptiveSettle.js";
+import { applyCaptureFixes } from "../knowledge/applyPatternHints.js";
 import { isWallText } from "../util/wallText.js";
 import { writeLiveWitnessViewport, liveWitnessDir } from "../evidence/liveWitness.js";
 import { baseEvidenceManifest, writeEvidenceManifest } from "../evidence/manifest.js";
@@ -113,6 +115,8 @@ export type CaptureResult = {
   // Stage 5: optional motion capture (WAAPI animations + rotating text). CSS @keyframes
   // motion is reconstructed from the IR, so it isn't re-captured here.
   motion?: MotionCapture;
+  /** True when the page probe classified the site as simple/static — motion/interaction probes were skipped. */
+  simpleStatic?: boolean;
   // Fast-path (interactions OFF) hover/focus rules recovered from the source
   // stylesheets. capId keys match data-cid-cap attrs carried into the IR.
   pseudoStates?: PseudoStateRule[];
@@ -522,6 +526,8 @@ export async function captureSite(opts: {
                          // can skip them. The cheap poster-less-video element stills are always kept
                          // (generation needs a first frame), this only gates the per-viewport page shots.
   log?: (event: Record<string, unknown>) => void;
+  /** Parallel viewport capture (2–3 pages). Default 1 = serial resize on one page. */
+  viewportConcurrency?: number;
 }): Promise<CaptureResult> {
   const viewports = opts.viewports ?? [...REQUIRED_VIEWPORTS];
   const log = opts.log ?? (() => {});
@@ -657,6 +663,9 @@ export async function captureSite(opts: {
   const captureSeoResources: SeoResource[] = [];
   const cssTextsForParsing: Array<{ baseUrl: string; text: string }> = [];
   const dismissUnion = { dismissed: [] as string[], overlaysRemaining: 0, removed: 0, videoStills: 0, blocking: false };
+  let pageNodeCount = 500;
+  let captureFixes = new Set<string>();
+  let simpleStaticPage = false;
   // Carry cookies/localStorage across the per-viewport contexts so the SAME page
   // is captured at every width: A/B-test buckets and consent state are usually
   // session-persisted, so without this each fresh context can load a different
@@ -755,7 +764,7 @@ export async function captureSite(opts: {
           `navigation failed for ${opts.url} within ${Math.round((Date.now() - navStart) / 1000)}s: ${String(navErr).slice(0, 300)}`,
         );
       }
-      await settle(pg);
+      await settle(pg, settleBudgetMs(pageNodeCount, "navigate", simpleStaticPage));
     };
 
     let { context, page } = await newSession();
@@ -803,12 +812,39 @@ export async function captureSite(opts: {
         `auth/bot wall detected at ${opts.url} (${wallProbe.nodes} nodes, wall text matched): capture aborted early`,
       );
     }
+    if (wallProbe) pageNodeCount = wallProbe.nodes;
+    try {
+      const probe = await page.evaluate(QUICK_PATTERN_PROBE) as {
+        nodes: number;
+        heavy: boolean;
+        simpleStatic: boolean;
+        captureFixes?: string[];
+      };
+      pageNodeCount = probe.nodes;
+      simpleStaticPage = probe.simpleStatic;
+      captureFixes = new Set(probe.captureFixes ?? []);
+      log({
+        event: "capture_probe",
+        nodes: probe.nodes,
+        simpleStatic: probe.simpleStatic,
+        fixes: [...captureFixes],
+      });
+    } catch { /* non-fatal */ }
+
+    const runMotion = opts.motion && !simpleStaticPage;
+    const runInteractions = opts.interactions && !simpleStaticPage;
+    const vpConc = Math.min(3, Math.max(1, opts.viewportConcurrency ?? 1));
+    const parallelVpSet = new Set(
+      vpConc > 1 ? viewports.filter((vw) => vw !== viewports[0] && vw !== canonical) : [],
+    );
+    if (parallelVpSet.size) log({ event: "parallel_capture", viewports: [...parallelVpSet], concurrency: vpConc });
 
     for (const vw of viewports) {
+      if (parallelVpSet.has(vw)) continue;
       if (perViewport.some((p) => p.viewport === vw)) continue;
       const vh = viewportHeight(vw);
       await safeSetViewport(vw, vh);
-      await settle(page, 1500); // let the resize reflow + any width-triggered content settle
+      await settle(page, settleBudgetMs(pageNodeCount, "resize", simpleStaticPage)); // let the resize reflow + any width-triggered content settle
 
       // Stage 2: dismiss cookie/consent/newsletter/region overlays. Run TWICE —
       // once after initial load (cookie/consent walls appear immediately), and
@@ -820,14 +856,14 @@ export async function captureSite(opts: {
       let blocking = false;
       const applyDismiss = async (phase: string): Promise<void> => {
         const clicked = await clickDismiss(page);
-        if (clicked.length) await settle(page, 1000);
+        if (clicked.length) await settle(page, settleBudgetMs(pageNodeCount, "dismiss", simpleStaticPage));
         const fin = await finalizeOverlays(page);
         for (const d of clicked) if (!dismissUnion.dismissed.includes(d)) dismissUnion.dismissed.push(d);
         for (const d of fin.removedLabels) { const k = "removed:" + d; if (!dismissUnion.dismissed.includes(k)) dismissUnion.dismissed.push(k); }
         dismissUnion.removed += fin.removed;
         overlaysRemaining = fin.overlaysRemaining;
         blocking = blocking || fin.blocking;
-        if (clicked.length || fin.removed) { await settle(page, 1000); log({ event: "dismissed", viewport: vw, phase, count: clicked.length, removed: fin.removed, remaining: fin.overlaysRemaining, blocking: fin.blocking }); }
+        if (clicked.length || fin.removed) { await settle(page, settleBudgetMs(pageNodeCount, "dismiss", simpleStaticPage)); log({ event: "dismissed", viewport: vw, phase, count: clicked.length, removed: fin.removed, remaining: fin.overlaysRemaining, blocking: fin.blocking }); }
       };
       await applyDismiss("load");
 
@@ -835,10 +871,10 @@ export async function captureSite(opts: {
       // and snapshot the pre-reveal hidden state — scroll reveals fire on the first
       // autoScroll and stay revealed, so this is the only moment their hidden state is
       // observable. Idempotent + motion-gated; the settled snapshot is unchanged.
-      if (opts.motion && vw === viewports[0]) { await tagElements(page); await probeReveals(page); }
+      if (runMotion && vw === viewports[0]) { await tagElements(page); await probeReveals(page); }
 
       await autoScroll(page, vh);
-      await settle(page, 1500);
+      await settle(page, settleBudgetMs(pageNodeCount, "post_scroll", simpleStaticPage));
       await applyDismiss("post-scroll");
       dismissUnion.overlaysRemaining = Math.max(dismissUnion.overlaysRemaining, overlaysRemaining);
       dismissUnion.blocking = dismissUnion.blocking || blocking;
@@ -852,7 +888,7 @@ export async function captureSite(opts: {
       // tag matches (data-cid-cap survives into the IR). Cross-origin sheets are
       // unreadable via CSSOM, so their intercepted raw text is re-parsed through
       // constructed stylesheets. Runs once, before any DOM walk.
-      if (!opts.interactions && vw === viewports[0]) {
+      if (!runInteractions && vw === viewports[0]) {
         try {
           pseudoStates = await collectPseudoStates(page, cssTextsForParsing.map((t) => t.text));
           if (pseudoStates.length) log({ event: "pseudo_states", rules: pseudoStates.length });
@@ -951,6 +987,7 @@ export async function captureSite(opts: {
       // Persist DOM snapshot, and (unless skipped for a production clone) the full-page screenshot.
       writeJSONCompact(join(captureDir, `dom-${vw}.json`), snapshot);
       if (opts.screenshots !== false) {
+        if (captureFixes.size) await applyCaptureFixes(page, captureFixes);
         await preScreenshotSettle(page);
         await captureScreenshot(page, join(screenshotsDir, `${vw}.png`), vw, log);
       }
@@ -972,13 +1009,12 @@ export async function captureSite(opts: {
       }
 
       // Stage 4: drive recognized affordances at the canonical viewport (opt-in).
-      if (opts.interactions && vw === canonical) {
+      if (runInteractions && vw === canonical) {
         try { interaction = await captureInteractions(page, { log }); }
         catch (e) { log({ event: "interactions_error", error: String(e).slice(0, 200) }); }
       }
 
-      // Stage 5: capture motion (WAAPI + rotating text) at the canonical viewport.
-      if (opts.motion && vw === canonical) {
+      if (runMotion && vw === canonical) {
         try { motion = await captureMotion(page, { log }); }
         catch (e) { log({ event: "motion_error", error: String(e).slice(0, 200) }); }
       }
@@ -994,6 +1030,105 @@ export async function captureSite(opts: {
         quiescent,
       });
       log({ event: "captured", viewport: vw, nodes: snapshot.doc.nodeCount, scrollHeight: snapshot.doc.scrollHeight });
+    }
+
+    // Parallel secondary viewports: independent page loads at each width with the same
+    // session cookies and settle recipe (roadmap B). Primary page keeps resize-based
+    // capture for viewports[0] + canonical so motion/interaction probes stay aligned.
+    if (parallelVpSet.size > 0) {
+      const pending = viewports.filter((vw) => parallelVpSet.has(vw));
+      const captureParallelVp = async (vw: number): Promise<void> => {
+        const vh = viewportHeight(vw);
+        const pg = await context.newPage();
+        attachPageHandlers(pg);
+        await pg.addInitScript(ESBUILD_SHIM);
+        if (opts.deterministicEnv ?? true) await pg.addInitScript(DETERMINISTIC_ENV_SHIM);
+        try {
+          await pg.setViewportSize({ width: vw, height: vh });
+          await pg.goto(opts.url, { waitUntil: "domcontentloaded", timeout: 45_000 });
+          await settle(pg, settleBudgetMs(pageNodeCount, "resize", simpleStaticPage));
+          let overlaysRemaining = 0;
+          let blocking = false;
+          const applyDismissPg = async (phase: string): Promise<void> => {
+            const clicked = await clickDismiss(pg);
+            if (clicked.length) await settle(pg, settleBudgetMs(pageNodeCount, "dismiss", simpleStaticPage));
+            const fin = await finalizeOverlays(pg);
+            for (const d of clicked) if (!dismissUnion.dismissed.includes(d)) dismissUnion.dismissed.push(d);
+            for (const d of fin.removedLabels) { const k = "removed:" + d; if (!dismissUnion.dismissed.includes(k)) dismissUnion.dismissed.push(k); }
+            dismissUnion.removed += fin.removed;
+            overlaysRemaining = fin.overlaysRemaining;
+            blocking = blocking || fin.blocking;
+            if (clicked.length || fin.removed) {
+              await settle(pg, settleBudgetMs(pageNodeCount, "dismiss", simpleStaticPage));
+              log({ event: "dismissed", viewport: vw, phase, count: clicked.length, removed: fin.removed, remaining: fin.overlaysRemaining, blocking: fin.blocking, parallel: true });
+            }
+          };
+          await applyDismissPg("load");
+          await autoScroll(pg, vh);
+          await settle(pg, settleBudgetMs(pageNodeCount, "post_scroll", simpleStaticPage));
+          await applyDismissPg("post-scroll");
+          dismissUnion.overlaysRemaining = Math.max(dismissUnion.overlaysRemaining, overlaysRemaining);
+          dismissUnion.blocking = dismissUnion.blocking || blocking;
+          const quiescent = await waitForQuiescence(pg);
+          await pg.evaluate(() => {
+            window.scrollTo(0, 0);
+            for (const el of Array.from(document.querySelectorAll("*"))) {
+              if (el.scrollLeft) el.scrollLeft = 0;
+              if (el.scrollTop) el.scrollTop = 0;
+            }
+          });
+          await pg.waitForTimeout(150);
+          const snapshot: PageSnapshot = await Promise.race([
+            pg.evaluate(collectPage),
+            new Promise<never>((_, rej) => setTimeout(() => rej(new Error(`collectPage timeout vp${vw}`)), 60_000)),
+          ]);
+          for (const da of snapshot.domAssets) {
+            const t = classifyAsset(da.url, null) ?? (da.kind === "manifest" ? "manifest" : da.kind === "video" ? "video" : da.kind === "svg" ? "svg" : "image");
+            recordAsset(da.url, t, null, null, da.via);
+          }
+          for (const u of snapshot.cssUrls) {
+            const t = classifyAsset(u, null) ?? "other";
+            recordAsset(u, t, null, null, "css-url");
+          }
+          writeJSONCompact(join(captureDir, `dom-${vw}.json`), snapshot);
+          if (opts.screenshots !== false) {
+            if (captureFixes.size) await applyCaptureFixes(pg, captureFixes);
+            await preScreenshotSettle(pg);
+            await captureScreenshot(pg, join(screenshotsDir, `${vw}.png`), vw, log);
+          }
+          const witnessVpDir = join(liveWitnessDir(opts.outDir), String(vw));
+          ensureDir(witnessVpDir);
+          writeJSONCompact(join(witnessVpDir, "dom.json"), snapshot);
+          try {
+            const pageHtml = await pg.content();
+            writeLiveWitnessViewport({
+              sourceDir: opts.outDir,
+              viewport: vw,
+              html: pageHtml,
+              screenshotSrc: opts.screenshots !== false ? join(screenshotsDir, `${vw}.png`) : undefined,
+            });
+          } catch (e) {
+            log({ event: "live_witness_error", viewport: vw, error: String(e).slice(0, 160), parallel: true });
+          }
+          perViewport.push({
+            viewport: vw,
+            height: vh,
+            scrollHeight: round(snapshot.doc.scrollHeight),
+            nodeCount: snapshot.doc.nodeCount,
+            truncated: snapshot.doc.truncated,
+            overlaysRemaining,
+            blocking,
+            quiescent,
+          });
+          log({ event: "captured", viewport: vw, nodes: snapshot.doc.nodeCount, scrollHeight: snapshot.doc.scrollHeight, parallel: true });
+        } finally {
+          try { await pg.close(); } catch { /* ignore */ }
+        }
+      };
+      for (let i = 0; i < pending.length; i += vpConc) {
+        const batch = pending.slice(i, i + vpConc);
+        await Promise.all(batch.map((vw) => captureParallelVp(vw)));
+      }
     }
 
     // Conditional-asset sweep: harvest lazy refs the scroll pass never fired
@@ -1150,6 +1285,7 @@ export async function captureSite(opts: {
     dismissal: dismissUnion,
     interaction,
     motion,
+    ...(simpleStaticPage ? { simpleStatic: true } : {}),
     ...(pseudoStates.length ? { pseudoStates } : {}),
   };
 

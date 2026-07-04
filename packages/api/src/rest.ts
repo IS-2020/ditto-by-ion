@@ -39,6 +39,8 @@ export type RestCloneSummary = {
   captureReused?: boolean;
   fileCount: number;
   totalBytes: number;
+  /** Static export published under public/app-preview/ (served by the API preview route). */
+  previewReady: boolean;
   bundleUrl?: string;
 };
 
@@ -77,6 +79,7 @@ export function buildRestSummary(jobId: string, result: CloneJobResult): RestClo
   let totalBytes = 0;
   const vals = Object.values(result.files);
   for (const f of vals) totalBytes += f.bytes;
+  const previewReady = "public/app-preview/index.html" in result.files;
   return {
     jobId,
     url: result.url,
@@ -90,6 +93,7 @@ export function buildRestSummary(jobId: string, result: CloneJobResult): RestClo
     captureReused: result.captureReused,
     fileCount: vals.length,
     totalBytes,
+    previewReady,
   };
 }
 

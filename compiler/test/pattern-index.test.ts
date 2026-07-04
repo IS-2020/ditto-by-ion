@@ -43,7 +43,7 @@ function fixtureIr(root: IRNode, nodeCount: number): IR {
 describe("pattern catalog", () => {
   it("loads and is pinned by the lock file", () => {
     const idx = loadPatternIndex();
-    assert.ok(idx.catalog.patterns.length >= 40, "catalog should carry the seeded pattern set");
+    assert.ok(idx.catalog.patterns.length >= 80, "catalog should carry the seeded pattern set");
     assert.equal(assertPinnedCatalog({ strict: true }), null);
   });
 
