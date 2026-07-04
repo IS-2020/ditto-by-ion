@@ -18,6 +18,10 @@ import { resolvePatternHints, type PatternHints } from "../knowledge/patternInde
 import { resolveFixes, generateFixCss } from "../knowledge/applyPatternHints.js";
 import { readLayoutRepairHints } from "./layoutRepair.js";
 import { readAuditRepairHints, mergeAuditRepairCss } from "../validate/auditRepair.js";
+import {
+  readInteractionRepairHints,
+  mergeInteractionRepairCss,
+} from "../validate/interactionRepair.js";
 import { writeJSON, writeText, readJSON, fileExists } from "../util/fsx.js";
 import type { CaptureResult } from "../capture/capture.js";
 
@@ -83,9 +87,15 @@ export function generateAll(opts: {
   // the decorative color group; ditto.css references var(--token) for colors.
   const palette = buildColorPalette(ir);
   const auditRepair = readAuditRepairHints(sourceDir);
-  const mergedGenerateFixes = new Set([...patternFixes.generate, ...(auditRepair?.generateFixes ?? [])]);
+  const interactionRepair = readInteractionRepairHints(sourceDir);
+  const mergedGenerateFixes = new Set([
+    ...patternFixes.generate,
+    ...(auditRepair?.generateFixes ?? []),
+    ...(interactionRepair?.generateFixes ?? []),
+  ]);
   let fixCss = generateFixCss(mergedGenerateFixes);
   fixCss = mergeAuditRepairCss(auditRepair, fixCss);
+  fixCss = mergeInteractionRepairCss(interactionRepair, fixCss);
   const tokensCss = (palette.css ? palette.css + "\n" : "") + (fixCss ? fixCss + "\n" : "") + tokensToCss(tokens, true);
   const tokenResolver = buildTokenResolver(tokens);
   const primitives = recognizePrimitives(ir);
@@ -101,7 +111,7 @@ export function generateAll(opts: {
   // regen) makes the SAME choice — keeping output deterministic across processes.
   const optPath = join(sourceDir, "clone-options.json");
   const cloneOpts = fileExists(optPath) ? readJSON<{ components?: boolean; humanizeMode?: "tailwind" | "css"; framework?: AppFramework; reflow?: boolean }>(optPath) : {};
-  const reflow = !!cloneOpts.reflow || !!auditRepair?.enableReflow;
+  const reflow = !!cloneOpts.reflow || !!auditRepair?.enableReflow || !!interactionRepair?.enableReflow;
   const components = !!cloneOpts.components;
   const humanizeMode = cloneOpts.humanizeMode; // undefined → generateApp default ("tailwind")
   const layoutRepair = readLayoutRepairHints(sourceDir);

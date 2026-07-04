@@ -2442,6 +2442,72 @@
           "yotpo-widget"
         ]
       }
+    },
+    {
+      "id": "terminal_typewriter",
+      "kind": "motion",
+      "flags": [
+        "motion_lib"
+      ],
+      "match": {
+        "classTokens": [
+          "terminal",
+          "typewriter",
+          "typing-cursor"
+        ],
+        "classPrefixes": [
+          "terminal-"
+        ],
+        "attrNames": [
+          "data-typing"
+        ]
+      },
+      "captureRecipe": [
+        "probe_text_rotator"
+      ],
+      "generationFix": [
+        "scroll_anim_freeze"
+      ],
+      "validationExpectation": "motion_gate_rotator"
+    },
+    {
+      "id": "accordion_data_state",
+      "kind": "accordion",
+      "flags": [
+        "nav_toggle"
+      ],
+      "match": {
+        "attrNames": [
+          "data-state"
+        ]
+      },
+      "captureRecipe": [
+        "drive_data_state"
+      ],
+      "generationFix": [
+        "interaction_accordion_height"
+      ],
+      "validationExpectation": "interaction_gate_accordion"
+    },
+    {
+      "id": "custom_accordion_aria",
+      "kind": "accordion",
+      "flags": [
+        "nav_toggle"
+      ],
+      "match": {
+        "attrNames": [
+          "aria-expanded",
+          "aria-controls"
+        ]
+      },
+      "captureRecipe": [
+        "drive_aria_expanded"
+      ],
+      "generationFix": [
+        "interaction_accordion_height"
+      ],
+      "validationExpectation": "interaction_gate_accordion"
     }
   ]
 }

@@ -1017,6 +1017,23 @@ export async function captureSite(opts: {
       if (runMotion && vw === canonical) {
         try { motion = await captureMotion(page, { log }); }
         catch (e) { log({ event: "motion_error", error: String(e).slice(0, 200) }); }
+        // Register lottie source JSONs as assets so the asset stage downloads + materializes
+        // them (the in-page detector only records the URL; the fallback fetch grabs the file).
+        for (const l of motion?.lotties ?? []) {
+          if (l.src) { recordAsset(l.src, "lottie", null, null, "lottie"); continue; }
+          // Inline animationData (no fetchable URL): store as a real .json asset so it
+          // materializes to /assets/cloned/lottie instead of being embedded in page spec.
+          if (l.inlineKey && motion?.lottieInline) {
+            const data = motion.lottieInline[l.inlineKey];
+            if (data === undefined) continue;
+            const buf = Buffer.from(JSON.stringify(data), "utf8");
+            const synthUrl = `ditto-inline:/lottie/${sha1_12(buf.toString("utf8"))}.json`;
+            recordAsset(synthUrl, "lottie", "application/json", 200, "lottie-inline");
+            storeBytes(synthUrl, "lottie", buf);
+            l.src = synthUrl;
+            l.inlineKey = null;
+          }
+        }
       }
 
       perViewport.push({

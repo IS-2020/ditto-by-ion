@@ -324,7 +324,10 @@ export async function captureInteractions(page: Page, opts?: { maxCandidates?: n
       return id;
     };
     const set = new Set<Element>();
-    for (const el of Array.from(document.querySelectorAll("a, button, [role='button'], input, select, textarea, summary, label, [tabindex]"))) set.add(el);
+    for (const el of Array.from(document.querySelectorAll(
+      "a, button, [role='button'], input, select, textarea, summary, label, [tabindex], " +
+      "[aria-expanded], [data-state], [aria-controls], [role='tab'], [role='menuitem'], details > summary",
+    ))) set.add(el);
     for (const el of Array.from(document.querySelectorAll("*"))) {
       if (set.size > 4000) break;
       try { if (getComputedStyle(el).cursor === "pointer") set.add(el); } catch { /* ignore */ }
@@ -512,6 +515,20 @@ async function recognizePatterns(page: Page): Promise<{ tabs: TabsStruct[]; acco
       const tc = capOf(btn), rc = capOf(region);
       if (!tc || !rc || !visible(btn)) continue;
       accItems.push({ triggerCap: tc, regionCap: rc, expandedAtBase: btn.getAttribute("aria-expanded") === "true" });
+    }
+    // Radix / shadcn data-state accordions (data-state=open|closed on trigger + panel).
+    for (const btn of Array.from(document.querySelectorAll("[data-state='open'], [data-state='closed']"))) {
+      if (btn.getAttribute("role") === "tab") continue;
+      if (btn.getAttribute("aria-haspopup")) continue;
+      const controls = btn.getAttribute("aria-controls");
+      let region: Element | null = controls ? document.getElementById(controls) : btn.nextElementSibling;
+      while (region && !region.hasAttribute("data-state") && !region.hasAttribute("data-cid-cap")) {
+        region = region.nextElementSibling;
+      }
+      const tc = capOf(btn), rc = capOf(region);
+      if (!tc || !rc || !visible(btn)) continue;
+      if (accItems.some((i) => i.triggerCap === tc || i.regionCap === rc)) continue;
+      accItems.push({ triggerCap: tc, regionCap: rc, expandedAtBase: btn.getAttribute("data-state") === "open" });
     }
     if (accItems.length) accordions.push({ rootCap: accItems[0]!.triggerCap, items: accItems.slice(0, 40) });
 

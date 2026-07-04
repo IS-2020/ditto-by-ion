@@ -6,6 +6,7 @@ import { isTextChild } from "../normalize/ir.js";
 import { generateCss, RESET_CSS } from "./css.js";
 import { generateInteractionCss } from "./interactionCss.js";
 import { generatePseudoStateCss } from "./pseudoStates.js";
+import { generateDeckFreezeCss } from "./deckFreeze.js";
 import { buildRuntimeSpecs, wiresJsx, dittoWireImportPath, DITTO_WIRE_TSX, accordionJsx, accordionImportPath, ACCORDION_TSX, type AccordionRuntimeSpec, type RuntimeSpec } from "./interactive.js";
 import { buildMotionSpec, motionWireJsx, dittoMotionImportPath, motionHasContent, DITTO_MOTION_TSX, type MotionSpec } from "./motion.js";
 import { buildLottieSpec, lottieWireJsx, dittoLottieImportPath, lottieHasContent, materializeInlineLottieJson, materializeLottieFrameSvgs, DITTO_LOTTIE_TSX, type LottieSpec as LottieRuntimeSpec } from "./lottie.js";
@@ -2527,10 +2528,11 @@ export function generateApp(input: GenerateInput, tokensCss: string): { pageTsx:
   // Fast-path hover/focus (stylesheet-recovered) applies in BOTH modes, but only
   // when Stage 4 didn't run — its live-driven deltas supersede this recovery.
   const pseudoStateCss = input.interaction ? "" : generatePseudoStateCss(ir, input.pseudoStates);
+  const deckFreezeCss = generateDeckFreezeCss(ir);
   const cloneCss = (tw
     ? tw.pseudoCss
     : (classMap ? classMap.css : generateCss(ir, assetMap, undefined, input.colorVar, input.tokenResolver)) + generateInteractionCss(ir, input.interaction)
-  ) + pseudoStateCss;
+  ) + pseudoStateCss + deckFreezeCss;
   const sectionOut = sectionFiles(sections, components, svgs);
   const contentTs = contentModule(components, sectionOut.contentDecls);
 

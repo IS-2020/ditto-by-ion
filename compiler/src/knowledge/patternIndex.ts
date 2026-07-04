@@ -34,6 +34,12 @@ export type PatternDef = {
   kind: string;
   flags: string[];
   match: PatternMatchSpec;
+  /** Capture-time recipe ids (see applyPatternHints PATTERN_FIXES). */
+  captureRecipe?: string[];
+  /** Generate-time fix ids merged into pattern-fixes.json. */
+  generationFix?: string[];
+  /** Expected validation gate for this pattern class. */
+  validationExpectation?: string;
 };
 
 export type PatternCatalog = {

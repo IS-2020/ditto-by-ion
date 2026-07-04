@@ -93,6 +93,15 @@ export const STUDIO_HTML = `<!doctype html>
   .audit-triptych { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; background: var(--border); }
   .audit-triptych img { width: 100%; display: block; background: #fff; }
   .audit-triptych figcaption { font-size: 10px; text-align: center; padding: 6px; color: var(--muted); background: var(--surface-2); }
+  .behavior-checklist { margin: 0 0 20px; border: 1px solid var(--border); border-radius: 14px; overflow: hidden; background: var(--surface); }
+  .behavior-checklist-head { padding: 10px 14px; background: var(--surface-2); border-bottom: 1px solid var(--border); font-size: 13px; font-weight: 600; display: flex; justify-content: space-between; }
+  .behavior-row { display: flex; align-items: center; gap: 10px; padding: 8px 14px; font-size: 13px; border-bottom: 1px solid var(--border); }
+  .behavior-row:last-child { border-bottom: 0; }
+  .behavior-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .behavior-dot.pass { background: var(--success); }
+  .behavior-dot.fail, .behavior-dot.pruned { background: var(--error); }
+  .behavior-dot.static, .behavior-dot.na { background: var(--muted); }
+  .behavior-detail { color: var(--muted); font-size: 12px; margin-left: auto; }
   .preview-badge { position: absolute; top: 12px; left: 12px; z-index: 2; padding: 6px 12px; border-radius: 999px; font-size: 11px; font-weight: 600; background: #0009; color: #fff; border: 1px solid #ffffff33; pointer-events: none; }
   #scan-panel { padding: 14px 18px; border-bottom: 1px solid var(--border); max-height: 220px; overflow-y: auto; }
   #scan-panel h3 { margin: 0 0 8px; font-size: 13px; font-weight: 600; }
@@ -240,6 +249,10 @@ export const STUDIO_HTML = `<!doctype html>
           <span class="audit-badge" id="audit-pass-badge">No audit yet</span>
         </div>
         <p class="lead" id="audit-lead">Pixel comparison of the live site vs the Next.js clone (requires Full quality + validation).</p>
+        <div id="behavior-checklist" class="behavior-checklist" hidden>
+          <div class="behavior-checklist-head"><span>Interaction &amp; motion</span><span id="behavior-summary" style="font-weight:400;color:var(--muted)"></span></div>
+          <div id="behavior-rows"></div>
+        </div>
         <div id="audit-comparisons"></div>
       </div>
       <iframe id="frame" hidden title="Site preview"></iframe>
@@ -450,6 +463,24 @@ function renderRouteList() {
   }
 }
 
+function renderBehaviorChecklist(behavior) {
+  const wrap = $("behavior-checklist");
+  const rowsEl = $("behavior-rows");
+  if (!behavior || !wrap || !rowsEl) { if (wrap) wrap.hidden = true; return; }
+  const rows = [...(behavior.interaction?.rows || []), ...(behavior.motion?.rows || [])];
+  if (!rows.length) { wrap.hidden = true; return; }
+  wrap.hidden = false;
+  rowsEl.innerHTML = rows.map(function(r) {
+    return '<div class="behavior-row"><span class="behavior-dot ' + r.status + '"></span><span>' + r.label + '</span><span class="behavior-detail">' + (r.detail || r.status) + '</span></div>';
+  }).join("");
+  const ip = behavior.interaction?.pass;
+  const mp = behavior.motion?.pass;
+  const pr = behavior.interaction?.pruned || 0;
+  let sum = (ip ? "Interaction OK" : "Interaction issues") + " · " + (mp ? "Motion OK" : "Motion issues");
+  if (pr) sum += " · " + pr + " pruned";
+  $("behavior-summary").textContent = sum;
+}
+
 async function loadAudit(jobId) {
   const panel = $("audit-comparisons");
   panel.innerHTML = '<div class="meta">Loading audit…</div>';
@@ -470,6 +501,7 @@ async function loadAudit(jobId) {
     if (typeof d.worstDiffPct === "number") {
       $("audit-lead").textContent = "Worst viewport diff: " + (d.worstDiffPct * 100).toFixed(2) + "% — live site (left) vs Next.js clone (center) vs diff (right).";
     }
+    renderBehaviorChecklist(d.behavior);
     panel.innerHTML = "";
     if (!d.comparisons?.length) {
       panel.innerHTML = '<div class="meta">No comparison images yet. Use Full quality without background validation, or wait for async verify.</div>';
@@ -1035,7 +1067,7 @@ $("url").addEventListener("keydown", (e) => { if (e.key === "Enter") $("go").cli
 const TIER_HINTS = {
   production: "Best fidelity — all screen sizes, animations, and quality checks.",
   dev: "Reuse a previous capture when available — faster rebuild.",
-  draft: "Fast peek at one screen size — good for a quick look.",
+  draft: "Fast peek — single viewport, no animations (interactions/motion off).",
 };
 function syncTierUi() {
   const tier = $("tier").value;

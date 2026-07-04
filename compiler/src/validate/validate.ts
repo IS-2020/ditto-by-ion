@@ -29,6 +29,10 @@ import {
   repairableFailures,
   writeAuditRepairHints,
 } from "./auditRepair.js";
+import {
+  planInteractionRepair,
+  writeInteractionRepairHints,
+} from "./interactionRepair.js";
 import { MIRROR_MOUNT } from "../generate/mirror.js";
 
 /** Widths the capture never sampled — the midpoint of every adjacent captured pair (inside each
@@ -74,6 +78,8 @@ export async function validateRun(runDir: string, opts?: {
   /** Tier G: gate failure → structured defect → targeted regen (default on for hard/stage2). */
   repairLoop?: boolean;
   repairBudget?: number;
+  /** Retries with targeted interaction fixes before pruning to static. */
+  interactionRepairBudget?: number;
   log?: (e: Record<string, unknown>) => void;
 }): Promise<Report> {
   const log = opts?.log ?? (() => {});
@@ -280,6 +286,53 @@ export async function validateRun(runDir: string, opts?: {
       });
       gates.responsive = gateResponsive(ir2, probeSnaps, viewports);
       log({ event: "audit_repair", iter: ri + 1, defects: defects.length, fixes: hints.generateFixes });
+    }
+  }
+
+  // ---- Interaction repair: targeted regen before pruning broken patterns ----
+  if (capture.interaction && build.ok && build.outDir) {
+    let rejected = (interactionGate.metrics.rejected as string[] | undefined) ?? [];
+    const intRepairBudget = opts?.interactionRepairBudget ?? 2;
+    for (let ii = 0; ii < intRepairBudget && rejected.length > 0; ii++) {
+      const hints = planInteractionRepair(rejected, interactionGate, ii + 1);
+      if (!hints) break;
+      writeInteractionRepairHints(sourceDir, hints);
+      generateAll({
+        sourceDir,
+        capture,
+        viewports,
+        sampleViewports: capture.viewports,
+        url,
+        outDir: generatedDir,
+        ignoreRejectedInteractions: true,
+      });
+      const reb = buildApp(appDir, harnessDir);
+      if (!reb.ok || !reb.outDir) break;
+      const srv = await serveStatic(reb.outDir);
+      try {
+        const irR = buildIR(sourceDir, viewports, { motion: !!capture.motion });
+        const newGate = await driveInteractionGate({
+          url: srv.url + "/",
+          viewports,
+          ir: irR,
+          interaction: capture.interaction,
+        });
+        const newRejected = (newGate.metrics.rejected as string[] | undefined) ?? [];
+        log({
+          event: "interaction_repair",
+          iter: ii + 1,
+          before: rejected.length,
+          after: newRejected.length,
+          fixes: hints.generateFixes,
+        });
+        if (newRejected.length < rejected.length) {
+          interactionGate = newGate;
+          gates.interaction = interactionGate;
+          rejected = newRejected;
+        } else break;
+      } finally {
+        await srv.close();
+      }
     }
   }
 

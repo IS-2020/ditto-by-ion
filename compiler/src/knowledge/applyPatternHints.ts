@@ -1,5 +1,6 @@
 import type { Page } from "playwright";
 import type { PatternHints } from "./patternIndex.js";
+import { loadPatternIndex } from "./patternIndex.js";
 
 /** Actionable fix bundles keyed by matched pattern id (frozen data). */
 export const PATTERN_FIXES: Record<string, { capture?: string[]; generate?: string[] }> = {
@@ -77,6 +78,11 @@ export const PATTERN_FIXES: Record<string, { capture?: string[]; generate?: stri
   // Marquees — CSS loop instead of JS track
   marquee_generic: { generate: ["marquee_css_loop"] },
   marquee_rfm: { generate: ["marquee_css_loop"] },
+
+  // Portfolio / terminal UI
+  terminal_typewriter: { generate: ["scroll_anim_freeze"] },
+  custom_accordion_aria: { generate: ["interaction_accordion_height"] },
+  accordion_data_state: { generate: ["interaction_accordion_height"] },
 };
 
 export type ResolvedFixes = {
@@ -88,11 +94,17 @@ export type ResolvedFixes = {
 export function resolveFixes(hints: PatternHints): ResolvedFixes {
   const capture = new Set<string>();
   const generate = new Set<string>();
+  const idx = loadPatternIndex();
+  const byId = new Map(idx.catalog.patterns.map((p) => [p.id, p]));
   for (const m of hints.matches) {
     const fx = PATTERN_FIXES[m.id];
-    if (!fx) continue;
-    for (const c of fx.capture ?? []) capture.add(c);
-    for (const g of fx.generate ?? []) generate.add(g);
+    if (fx) {
+      for (const c of fx.capture ?? []) capture.add(c);
+      for (const g of fx.generate ?? []) generate.add(g);
+    }
+    const def = byId.get(m.id);
+    if (def?.captureRecipe) for (const c of def.captureRecipe) capture.add(c);
+    if (def?.generationFix) for (const g of def.generationFix) generate.add(g);
   }
   return {
     capture,
@@ -199,6 +211,12 @@ export function generateFixCss(fixes: Set<string>): string {
   }
   if (fixes.has("marquee_css_loop")) {
     parts.push("/* pattern-fix: marquee_css_loop */", ".rfm-marquee,.marquee,.rfm-initial-child-container{animation-play-state:running!important}");
+  }
+  if (fixes.has("interaction_accordion_height")) {
+    parts.push(
+      "/* pattern-fix: interaction_accordion_height */",
+      "[data-cid][style*='max-height: 0'],[data-cid][style*='max-height:0']{transition:max-height .25s ease,opacity .25s ease!important}",
+    );
   }
   return parts.length ? parts.join("\n") + "\n" : "";
 }

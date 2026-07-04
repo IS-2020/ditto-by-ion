@@ -109,6 +109,124 @@ cd compiler
 CATALOG_ONLY_HINTS=true npm run clone -- https://example.com/ --runs=../runs --viewports=1280 --validate
 ```
 
+## Architecture
+
+Deterministic pipeline: Playwright capture freezes evidence → IR inference → Next.js generation → graded validation. The diagrams below reflect the code as it exists today.
+
+### Capture pipeline
+
+Playwright loads the target URL with a deterministic env shim (seeded `Math.random`, pinned epoch), scrolls for lazy content, then stamps `data-cid` anchors before the canonical snapshot. Optional stages run only when enabled (production tier turns them on by default).
+
+```mermaid
+flowchart TD
+  URL[Target URL] --> PW[Playwright capture]
+  PW --> Settle[Scroll + settle recipe]
+  Settle --> Base[Base DOM snapshot per viewport]
+  Base --> S4{Stage 4<br/>interactions?}
+  S4 -->|yes| Tag[tagElements — stamp data-cid]
+  Tag --> Int[captureInteractions — hover/focus + tabs/accordion]
+  S4 -->|no| Pseudo[Fast-path :hover/:focus from stylesheets]
+  Int --> S5{Stage 5<br/>motion?}
+  Pseudo --> S5
+  S5 -->|yes| Rev[probeReveals + captureMotion]
+  Rev --> Lottie[Register lottie assets in assets-store]
+  S5 -->|no| Freeze[capture-result.json frozen]
+  Lottie --> Freeze
+```
+
+| Stage | Module | Output |
+|-------|--------|--------|
+| Base | `capture/capture.ts` | `dom-*.json`, live witness, assets-store |
+| Stage 4 | `capture/interactions.ts` | Hover/focus deltas, recognized wire specs |
+| Stage 5 | `capture/motion.ts`, `capture/lottie.ts` | WAAPI specs, rotating text, Lottie JSON refs |
+
+### Generation
+
+`generateAll` (`generate/pipeline.ts`) builds IR from the frozen capture, runs inference (sections, tokens, pattern catalog hints), then `generateApp` emits the Next.js project plus runtime controllers.
+
+```mermaid
+flowchart LR
+  Cap[capture-result.json] --> IR[buildIR + infer]
+  IR --> App[generateApp]
+  App --> Next[Next.js pages + ditto.css]
+  App --> Wire{DittoWire}
+  App --> Motion{DittoMotion}
+  App --> Lottie{DittoLottie}
+  App --> Deck[deckFreeze CSS]
+  Wire -->|tabs/accordion specs| Client1["'use client' controller"]
+  Motion -->|WAAPI + rotating text| Client2["'use client' controller"]
+  Lottie -->|lottie-web replay| Client3["'use client' controller"]
+  Deck -->|opacity-cycling decks| CSS[Force first card visible]
+```
+
+| Runtime | Emitted when | Role |
+|---------|--------------|------|
+| **DittoWire** | Stage 4 wire specs survive the interaction gate | Client-side tabs/accordion/display-toggle reproduction |
+| **DittoMotion** | WAAPI or rotating-text motion captured | Replays animations on mount; honors `__dittoMotionStopped` |
+| **DittoLottie** | Lottie JSON assets discovered | Replays Lottie via lottie-web; same stop hook as DittoMotion |
+| **deckFreeze** | Opacity-cycling sibling stacks in IR | CSS normalizer — show first stacked card for static gates |
+
+### Validation gates + freeze
+
+Validation re-renders the **built** clone against captured evidence — no live URL is re-fetched. Static gates (0–6, responsive, perceptual) measure the **settled** frame; motion is verified separately.
+
+```mermaid
+flowchart TD
+  Gen[Generated app] --> Build[next build + serveStatic]
+  Build --> StaticGates[Gates 0–6 + responsive + perceptual]
+  StaticGates --> Stop["Set __dittoMotionStopped + __dittoMotionStop()"]
+  Stop --> Snap[DOM walk + pixel diff vs capture]
+  Snap --> IntGate{Interaction gate<br/>Stage 4}
+  IntGate -->|drive same hovers/clicks| IntPass[Pass / reject → static fallback]
+  Snap --> MotGate{Motion gate<br/>Stage 5}
+  MotGate -->|animations running| MotPass[Verify WAAPI + rotator + @keyframes]
+  IntPass --> Report[validation/report.json]
+  MotPass --> Report
+  Repair[interactionRepair + auditRepair loops] --> Gen
+```
+
+Before static measurement, the validator sets `window.__dittoMotionStopped` so DittoMotion/DittoLottie skip hydration-time replay, then calls `__dittoMotionStop()` to restore rotator text and cancel running animations. The motion gate drives an **un-stopped** page to confirm animations actually run.
+
+### API & service flow
+
+Local/Railway runs the full Hono API (`packages/api/src/app.ts`); Vercel serves a slim UI-only bundle (`vercelUi.ts`) because Playwright cannot run in serverless.
+
+```mermaid
+flowchart TD
+  subgraph clients [Clients]
+    W[/wizard]
+    S[/studio]
+    REST[REST / MCP]
+  end
+  subgraph tiers [qualityTier defaults]
+    Prod[production — 4 viewports, interactions, motion, verify]
+    Dev[dev — cache-friendly, no verify]
+    Draft[draft — 1280 only, no Stage 4/5]
+  end
+  W --> Scan[POST /v1/scan]
+  W --> Clone[POST /v1/clones]
+  S --> Clone
+  REST --> Clone
+  Clone --> Tier[applyQualityTier]
+  Tier --> Prod
+  Tier --> Dev
+  Tier --> Draft
+  Clone --> Runner[@cloner/core job runner]
+  Runner --> Compiler[compiler capture → generate → validate]
+  Runner --> WIP[/mirror-preview/ during build]
+  Runner --> Preview[/app-preview/ after next export]
+  Runner --> Audit[GET /v1/clones/:id/audit]
+  Runner --> Behavior[behaviorAudit — interaction roadmap]
+  subgraph vercel [Vercel demo]
+    VUI[vercelUi.ts — wizard + studio HTML]
+    V503[503 on /v1/* clone endpoints]
+  end
+  W -.->|hosted| VUI
+  VUI --> V503
+```
+
+Wizard flow: scan routes → start homepage clone at `production` → poll `/v1/clones/:id/events` → live WIP files + mirror preview → pixel audit slider. Multi-page expansion queues selected routes after the homepage job succeeds.
+
 ## Repository map
 
 | Path | Purpose |

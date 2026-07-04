@@ -14,7 +14,8 @@ import { STUDIO_HTML } from "./ui.js";
 import { WIZARD_HTML } from "./wizard.js";
 import { SHELL_HTML } from "./shell.js";
 import { loadPatternsPayload } from "./patterns.js";
-import { isHtmlLike, rewritePreviewHtml } from "./previewServe.js";
+import { isHtmlLike, previewErrorHtml, rewritePreviewHtml } from "./previewServe.js";
+import { buildBehaviorAudit } from "./behaviorAudit.js";
 
 const OptionsSchema = z
   .object({
@@ -369,6 +370,11 @@ export function createApp(deps: AppDeps): Hono {
     return c.body(file.bytes);
   };
 
+  const previewNotReady = (c: Context, title: string, detail: string, status: 404 | 503 = 404) => {
+    c.header("content-type", "text/html; charset=utf-8");
+    return c.body(previewErrorHtml(title, detail), status);
+  };
+
   const previewFile = async (c: Context, sub: string) => {
     const id = c.req.param("id") ?? "";
     const mountBase = `/v1/clones/${id}/app-preview/`;
@@ -386,12 +392,18 @@ export function createApp(deps: AppDeps): Hono {
       }
       if (file) return servePreviewBytes(c, file, mountBase, p);
     }
-    return c.json({ error: "no app preview for this clone (preview builds are on by default for single-page clones; pass options.preview=true otherwise)" }, 404);
+    return previewNotReady(
+      c,
+      "App preview not ready",
+      "The Next.js export is still building or was skipped. Try the static mirror preview, or wait for the build to finish.",
+    );
   };
   /** Early WIP preview from the static HTML mirror (available right after generate, before npm build). */
   const mirrorPreviewFile = async (c: Context, sub: string) => {
     const id = c.req.param("id") ?? "";
-    if (!backend.runArtifact) return c.json({ error: "not supported" }, 501);
+    if (!backend.runArtifact) {
+      return previewNotReady(c, "Preview unavailable", "This server does not support live mirror previews.", 503);
+    }
     const mountBase = `/v1/clones/${id}/mirror-preview/`;
     const tryPaths = sub.includes(".")
       ? [
@@ -408,7 +420,11 @@ export function createApp(deps: AppDeps): Hono {
       const file = await backend.runArtifact(id, p);
       if (file) return servePreviewBytes(c, file, mountBase, p);
     }
-    return c.json({ error: "mirror preview not ready yet" }, 404);
+    return previewNotReady(
+      c,
+      "Mirror preview not ready",
+      "Static HTML mirror is not available yet — capture and generate may still be running.",
+    );
   };
   app.get("/v1/clones/:id/app-preview", (c) => c.redirect(`/v1/clones/${c.req.param("id")}/app-preview/`, 302));
   app.get("/v1/clones/:id/app-preview/", (c) => previewFile(c, "index.html"));
@@ -457,6 +473,44 @@ export function createApp(deps: AppDeps): Hono {
       cloneUrl: `${base}/${vp}/clone.png`,
       diffUrl: `${base}/${vp}/diff.png`,
     }));
+
+    let captureMeta: { hover?: number; focus?: number; candidates?: number; motion?: boolean } | undefined;
+    let patternIds: string[] | undefined;
+    const jobId = c.req.param("id");
+    if (backend.runArtifact) {
+      const interFile = await backend.runArtifact(jobId, "interaction.json");
+      if (interFile) {
+        try {
+          const inter = JSON.parse(interFile.bytes.toString("utf8")) as {
+            hover?: Record<string, unknown>;
+            focus?: Record<string, unknown>;
+            hoverDesc?: Record<string, unknown>;
+            candidates?: number;
+          };
+          captureMeta = {
+            hover: Object.keys(inter.hover ?? {}).length + Object.keys(inter.hoverDesc ?? {}).length,
+            focus: Object.keys(inter.focus ?? {}).length,
+            candidates: inter.candidates,
+          };
+        } catch { /* optional */ }
+      }
+      const capFile = await backend.runArtifact(jobId, "capture/capture-result.json");
+      if (capFile) {
+        try {
+          const cap = JSON.parse(capFile.bytes.toString("utf8")) as { motion?: boolean; interaction?: boolean };
+          captureMeta = { ...captureMeta, motion: !!cap.motion };
+        } catch { /* optional */ }
+      }
+      const patFile = await backend.runArtifact(jobId, "generated/patterns.json");
+      if (patFile) {
+        try {
+          const pj = JSON.parse(patFile.bytes.toString("utf8")) as { matches?: Array<{ id: string }> };
+          patternIds = pj.matches?.map((m) => m.id);
+        } catch { /* optional */ }
+      }
+    }
+    const behavior = buildBehaviorAudit(verify?.gates, captureMeta, patternIds);
+
     return c.json({
       jobId: c.req.param("id"),
       status: view.status,
@@ -467,6 +521,7 @@ export function createApp(deps: AppDeps): Hono {
       visualAuditPass: visual?.pass,
       worstDiffPct: perceptual?.metrics?.worstDiffPct ?? visual?.metrics?.worstDiffPct,
       comparisons,
+      behavior,
       gates: verify?.gates
         ? Object.fromEntries(
             Object.entries(verify.gates).map(([k, g]) => [k, { pass: g.pass, issues: (g.issues ?? []).slice(0, 5) }]),
