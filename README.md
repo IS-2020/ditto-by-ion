@@ -9,7 +9,7 @@ Deterministic website compiler fork of [ditto.site](https://github.com/ion-desig
 **Live UI:** [https://ditto-by-ion.vercel.app/wizard](https://ditto-by-ion.vercel.app/wizard)  
 **Repo:** [github.com/IS-2020/ditto-by-ion](https://github.com/IS-2020/ditto-by-ion)
 
-> Full Playwright capture runs on Vercel with extended timeouts; for production workloads (Postgres queue, R2 storage, multi-worker), use [Railway + Neon](docs/DEPLOY.md).
+> Vercel hosts the wizard UI; set `DITTO_WORKER_URL` to a Railway API for live scan/clone, or run locally for the full Playwright stack. Production workloads (Postgres queue, R2 storage, multi-worker): [Railway + Neon](docs/DEPLOY.md).
 
 ## First-run onboarding wizard
 
@@ -94,8 +94,19 @@ Poll progress: `GET /v1/clones/:id/events` · Preview: `/v1/clones/:id/app-previ
 
 | Target | Use case |
 |--------|----------|
-| **[Vercel](https://ditto-by-ion.vercel.app)** (`vercel.json`) | Wizard UI + in-memory API demo |
+| **[Vercel](https://ditto-by-ion.vercel.app)** (`vercel.json`) | Wizard UI; proxies clone API when `DITTO_WORKER_URL` is set |
 | **[Railway + Neon + R2](docs/DEPLOY.md)** | Production queue, storage, workers |
+
+### Vercel + remote worker
+
+Vercel serves the wizard UI (`vercelUi.ts`) without Playwright. To enable scan and clone on production, deploy the full API to Railway (see [docs/DEPLOY.md](docs/DEPLOY.md)), then set on the Vercel project:
+
+| Variable | Example | Purpose |
+|----------|---------|---------|
+| `DITTO_WORKER_URL` | `https://api.yourdomain.com` | Primary — Vercel proxies `/v1/scan` and `/v1/clones*` here |
+| `CLONE_API_URL` | (same) | Fallback alias if `DITTO_WORKER_URL` is unset |
+
+Without either variable, the wizard skips route discovery and shows a banner; clone jobs still require the worker (or local `PORT=8899 npm run dev:api`).
 
 ```bash
 # Vercel (from repo root)
