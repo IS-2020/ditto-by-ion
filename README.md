@@ -1,13 +1,13 @@
 # ditto by ION
 
-[![CI](https://github.com/devteamaegis/ditto.site-1/actions/workflows/ci.yml/badge.svg)](https://github.com/devteamaegis/ditto.site-1/actions/workflows/ci.yml)
+[![CI](https://github.com/IS-2020/ditto-by-ion/actions/workflows/ci.yml/badge.svg)](https://github.com/IS-2020/ditto-by-ion/actions/workflows/ci.yml)
 [![Live demo](https://img.shields.io/badge/demo-ditto--by--ion.vercel.app-gold)](https://ditto-by-ion.vercel.app/wizard)
 [![License: MIT](LICENSE)](LICENSE)
 
 Deterministic website compiler fork of [ditto.site](https://github.com/ion-design/ditto.site). Paste a public URL and get a self-contained Next.js App Router project — capture what the browser actually rendered, then emit byte-stable TypeScript output.
 
 **Live UI:** [https://ditto-by-ion.vercel.app/wizard](https://ditto-by-ion.vercel.app/wizard)  
-**Repo:** [github.com/devteamaegis/ditto.site-1](https://github.com/devteamaegis/ditto.site-1)
+**Repo:** [github.com/IS-2020/ditto-by-ion](https://github.com/IS-2020/ditto-by-ion)
 
 > Full Playwright capture runs on Vercel with extended timeouts; for production workloads (Postgres queue, R2 storage, multi-worker), use [Railway + Neon](docs/DEPLOY.md).
 
@@ -41,8 +41,8 @@ Reset wizard: `localStorage.removeItem('ditto_onboarded')` then reload.
 ## Quick start (local)
 
 ```bash
-git clone https://github.com/devteamaegis/ditto.site-1.git
-cd ditto.site-1
+git clone https://github.com/IS-2020/ditto-by-ion.git
+cd ditto-by-ion
 
 npm ci
 npx playwright install chromium

@@ -1,0 +1,17 @@
+node_modules
+**/node_modules
+runs
+local-data
+.harnesses
+compiler/dist
+compiler/output
+compiler/output-final
+compiler/.harness/.next
+compiler/.harness/out
+compiler/.harness2
+.next
+out
+.git
+*.log
+.DS_Store
+packages/*/dist
