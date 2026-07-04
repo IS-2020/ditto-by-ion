@@ -76,7 +76,7 @@ export function generateAll(opts: {
   const tokensCss = (palette.css ? palette.css + "\n" : "") + tokensToCss(tokens, true);
   const tokenResolver = buildTokenResolver(tokens);
   const primitives = recognizePrimitives(ir);
-  const recipeReport = buildRecipeReport(ir, sections, primitives);
+  const recipeReport = buildRecipeReport(ir, sections, primitives, patternHints);
   const interactionRecipeReport = buildInteractionRecipeReport(ir, sections, capture.interaction);
   // Patterns the interaction gate previously rejected (don't reproduce) → left static.
   const rejPath = join(sourceDir, "interaction-rejected.json");

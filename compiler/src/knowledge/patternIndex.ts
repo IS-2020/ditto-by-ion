@@ -146,6 +146,28 @@ function isElement(c: IRChild): c is IRNode {
   return (c as IRNode).id !== undefined;
 }
 
+/** Match ONE node's own evidence (srcClass tokens, tag, attr names, id prefix)
+ *  against the catalog. Shared by the page-level hint scan and per-candidate
+ *  recipe scoring. Returns matched defs, deduped, in catalog order. */
+export function matchCatalogNode(node: Pick<IRNode, "tag" | "attrs" | "srcClass">): PatternDef[] {
+  const idx = loadPatternIndex();
+  const hits = new Set<PatternDef>();
+  if (node.srcClass) {
+    for (const tok of node.srcClass.toLowerCase().split(/\s+/)) {
+      if (!tok) continue;
+      for (const def of idx.byClassToken.get(tok) ?? []) hits.add(def);
+      for (const [pre, def] of idx.classPrefixes) if (tok.startsWith(pre)) hits.add(def);
+    }
+  }
+  for (const def of idx.byTag.get(node.tag.toLowerCase()) ?? []) hits.add(def);
+  for (const attr of Object.keys(node.attrs)) {
+    for (const def of idx.byAttrName.get(attr.toLowerCase()) ?? []) hits.add(def);
+  }
+  const id = node.attrs.id;
+  if (id) for (const [pre, def] of idx.idPrefixes) if (id.startsWith(pre)) hits.add(def);
+  return idx.catalog.patterns.filter((p) => hits.has(p));
+}
+
 /** Single deterministic pre-order walk of the IR: tokenize srcClass, check tag /
  *  attr / id signatures, accumulate per-pattern counts + a bounded cid sample. */
 export function resolvePatternHints(ir: IR): PatternHints {
@@ -166,19 +188,7 @@ export function resolvePatternHints(ir: IR): PatternHints {
 
   const visit = (node: IRNode) => {
     const seen = new Set<string>();
-    if (node.srcClass) {
-      for (const tok of node.srcClass.toLowerCase().split(/\s+/)) {
-        if (!tok) continue;
-        for (const def of idx.byClassToken.get(tok) ?? []) hit(def, node.id, seen);
-        for (const [pre, def] of idx.classPrefixes) if (tok.startsWith(pre)) hit(def, node.id, seen);
-      }
-    }
-    for (const def of idx.byTag.get(node.tag.toLowerCase()) ?? []) hit(def, node.id, seen);
-    for (const attr of Object.keys(node.attrs)) {
-      for (const def of idx.byAttrName.get(attr.toLowerCase()) ?? []) hit(def, node.id, seen);
-    }
-    const id = node.attrs.id;
-    if (id) for (const [pre, def] of idx.idPrefixes) if (id.startsWith(pre)) hit(def, node.id, seen);
+    for (const def of matchCatalogNode(node)) hit(def, node.id, seen);
     for (const c of node.children) if (isElement(c)) visit(c);
   };
   visit(ir.root);
