@@ -49,4 +49,7 @@ compiler/output/
 compiler/output-final/
 compiler/.bridge/*.pem
 
+# Vercel bundle output (generated at deploy)
+api/index.js
+
 compiler/compiler/

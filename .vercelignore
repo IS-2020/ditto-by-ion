@@ -6,8 +6,11 @@ local-data
 compiler/dist
 compiler/output
 compiler/output-final
-compiler/.harness/.next
-compiler/.harness/out
+compiler/.harness/src/
+compiler/.harness/public/
+compiler/.harness/out/
+compiler/.harness/.next/
+compiler/.harness/node_modules/
 compiler/.harness2
 .next
 out
