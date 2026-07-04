@@ -4,6 +4,7 @@ import type { IR, IRNode } from "../src/normalize/ir.js";
 import {
   assertPinnedCatalog,
   loadPatternIndex,
+  matchCatalogNode,
   resolvePatternHints,
 } from "../src/knowledge/patternIndex.js";
 
@@ -92,6 +93,17 @@ describe("resolvePatternHints", () => {
     const hints = resolvePatternHints(fixtureIr(root, 3));
     assert.deepEqual(hints.matches, []);
     assert.equal(hints.simpleStatic, true);
+  });
+
+  it("matchCatalogNode classifies a single node (recipe evidence bridge)", () => {
+    const embla = matchCatalogNode(el("n1", "div", { srcClass: "embla__container" }));
+    assert.deepEqual(embla.map((d) => d.id), ["carousel_embla"]);
+    assert.equal(embla[0]?.kind, "carousel");
+    const shopify = matchCatalogNode(el("n2", "div", { attrs: { id: "shopify-section-hero" } }));
+    assert.ok(shopify.some((d) => d.id === "platform_shopify"));
+    const marquee = matchCatalogNode(el("n3", "div", { srcClass: "rfm-marquee" }));
+    assert.ok(marquee.some((d) => d.kind === "marquee"));
+    assert.deepEqual(matchCatalogNode(el("n4", "p", { srcClass: "prose" })), []);
   });
 
   it("is deterministic: identical IR yields byte-identical hints", () => {
