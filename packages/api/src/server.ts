@@ -1,16 +1,14 @@
 import { serve } from "@hono/node-server";
-import { runCloneJob } from "@cloner/core";
 import { createDb, createBoss, repo, type Db } from "@cloner/db";
 import { artifactStoreFromEnv } from "@cloner/storage";
 import { createApp } from "./app.js";
-import { InMemoryStore } from "./store.js";
-import { InMemoryBackend } from "./backends/inMemory.js";
+import { createBootstrapApp } from "./bootstrap.js";
 import { DbBackend } from "./backends/db.js";
 import type { Backend } from "./backend.js";
 import { hashApiKey, type AuthConfig } from "./auth.js";
-import { assertPublicUrl } from "./ssrf.js";
 import { loadEnv, type ApiEnv } from "./env.js";
 import { sendSignupEmail } from "./resend.js";
+import { assertPublicUrl } from "./ssrf.js";
 
 function buildAuth(env: ApiEnv, db?: Db): AuthConfig | undefined {
   const keyHashes = new Set(env.apiKeys.map(hashApiKey));
@@ -38,9 +36,8 @@ async function main(): Promise<void> {
     backend = new DbBackend({ db, boss, store });
     console.log(JSON.stringify({ event: "api_mode", mode: "db+queue" }));
   } else {
-    const store = new InMemoryStore(env.cloneTtlMs);
-    store.startSweeper();
-    backend = new InMemoryBackend({ store, runJob: runCloneJob, captureCacheDir: env.captureCacheDir || undefined });
+    const boot = createBootstrapApp();
+    backend = boot.backend;
     console.log(JSON.stringify({ event: "api_mode", mode: "in-memory" }));
   }
 

@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { mkdtempSync, rmSync, readFileSync, existsSync } from "node:fs";
+import { mkdtempSync, rmSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { PNG } from "pngjs";
 import pixelmatch from "pixelmatch";
@@ -355,6 +355,9 @@ export function screenshotDiff(sourceDir: string, renderedDir: string, viewports
     const ratio = diffPx / (w * h);
     perVp[vp] = Math.round(ratio * 10000) / 10000;
     worst = Math.max(worst, ratio);
+    const diffDir = join(validationDir, "diff");
+    ensureDir(diffDir);
+    writeFileSync(join(diffDir, `${vp}.png`), PNG.sync.write(diff));
     // include height mismatch penalty signal
     if (Math.abs(srcPng.height - genPng.height) / Math.max(srcPng.height, 1) > 0.05) {
       issues.push(`vp${vp} screenshot height mismatch ${srcPng.height} vs ${genPng.height}`);

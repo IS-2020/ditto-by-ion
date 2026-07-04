@@ -142,6 +142,7 @@ export async function runCloneJob(input: RunCloneJobInput): Promise<CloneJobResu
         reuseEntrySource,
         maxRoutes: options.maxRoutes,
         maxCollectionInstances: options.maxCollection,
+        selectedRoutes: options.selectedRoutes,
         captureConcurrency: options.captureConcurrency,
         validationConcurrency: options.validationConcurrency,
         viewportConcurrency: options.viewportConcurrency,
@@ -226,8 +227,8 @@ export async function runCloneJob(input: RunCloneJobInput): Promise<CloneJobResu
         !!(syncVerify && kind === "clone" && report?.gates?.build?.pass) &&
         ((report?.gates?.interaction?.metrics?.rejected ?? []).length === 0);
       const p = ensureAppPreview(runDir, { harnessDir: input.harnessDir, reusePriorBuild, log });
-      previewMs = p.previewMs;
-      if (!p.ok) log({ event: "app_preview_failed", error: p.error?.slice(-400) });
+      if (p.ok) previewMs = p.previewMs;
+      else log({ event: "app_preview_failed", error: p.error?.slice(-400) });
     }
 
     const files = collectFileMap(runDir);

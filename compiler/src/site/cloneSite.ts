@@ -31,6 +31,8 @@ export type CloneSiteOptions = {
   url: string;
   runsDir?: string;
   maxRoutes?: number;
+  /** When set, only these route paths are captured (entry is always kept). */
+  selectedRoutes?: string[];
   maxDepth?: number;
   maxCollectionInstances?: number; // skip reproducing listings of collections larger than this (very large directories)
   validate?: boolean; // build + grade the generated app (default false; opt in for QA)
@@ -105,6 +107,23 @@ export async function runCloneSite(opts: CloneSiteOptions): Promise<CloneSiteRes
   log({ event: "crawl_start", url: opts.url });
   const crawl = await crawlSite({ url: opts.url, maxDepth: opts.maxDepth, log });
   let plan = selectRoutes({ entryPath: crawl.entryPath, paths: crawl.paths, maxRoutes: opts.maxRoutes, maxCollectionInstances: opts.maxCollectionInstances });
+  if (opts.selectedRoutes?.length) {
+    const want = new Set(opts.selectedRoutes.map((p) => (p.startsWith("/") ? p : `/${p}`)));
+    want.add(plan.entry);
+    const kept = plan.selected.filter((r) => want.has(r.path));
+    const keptPaths = new Set(kept.map((r) => r.path));
+    const skipped = [...plan.skipped];
+    for (const r of plan.selected) {
+      if (!keptPaths.has(r.path)) skipped.push({ path: r.path, reason: "user_deselected" });
+    }
+    plan = {
+      ...plan,
+      selected: kept,
+      collections: plan.collections.filter((c) => keptPaths.has(c.representative) || (c.listing != null && keptPaths.has(c.listing))),
+      skipped,
+    };
+    log({ event: "plan_filtered", selected: plan.selected.length, requested: opts.selectedRoutes.length });
+  }
   writeJSON(join(runDir, "crawl.json"), {
     entryUrl: crawl.entryUrl, origin: crawl.origin, entryPath: crawl.entryPath,
     discovered: crawl.paths.length, depthByPath: crawl.depthByPath, robotsDisallow: crawl.robotsDisallow,

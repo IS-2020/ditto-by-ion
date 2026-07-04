@@ -7,12 +7,12 @@
   "author": "ishaansamantray",
   "repository": {
     "type": "git",
-    "url": "https://github.com/devteamaegis/ishaans-ditto-site.git"
+    "url": "https://github.com/devteamaegis/ditto.site-1.git"
   },
   "bugs": {
-    "url": "https://github.com/ion-design/ditto.site/issues"
+    "url": "https://github.com/devteamaegis/ditto.site-1/issues"
   },
-  "homepage": "https://github.com/ion-design/ditto.site#readme",
+  "homepage": "https://ditto-by-ion.vercel.app",
   "keywords": [
     "ditto.site",
     "website-compiler",

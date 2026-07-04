@@ -40,6 +40,12 @@ export type { PatternHints, PatternMatch, PatternDef, PatternCatalog } from "./k
 export { buildApp, DEFAULT_HARNESS_DIR } from "./validate/render.js";
 export type { BuildResult } from "./validate/render.js";
 
+// ---- Site crawl / route planning ----
+export { crawlSite } from "./crawl/crawl.js";
+export type { CrawlResult } from "./crawl/crawl.js";
+export { selectRoutes } from "./crawl/routeTemplates.js";
+export type { RoutePlan, SelectedRoute } from "./crawl/routeTemplates.js";
+
 // ---- Capture surface + version ----
 export { captureSite, REQUIRED_VIEWPORTS } from "./capture/capture.js";
 export type { CaptureResult } from "./capture/capture.js";

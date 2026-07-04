@@ -172,3 +172,13 @@ test("GET /v1/patterns serves the frozen pattern catalog", async () => {
   assert.ok(body.byKind.carousel?.some((p: { id: string }) => p.id === "carousel_swiper"));
   assert.match(body.catalogHash, /^[a-f0-9]{64}$/);
 });
+
+test("POST /v1/scan rejects invalid url", async () => {
+  const app = createApp({ backend: new InMemoryBackend({ store: new InMemoryStore(1000), runJob: fakeRunJob }) });
+  const res = await app.request("/v1/scan", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ url: "not-a-url" }),
+  });
+  assert.equal(res.status, 400);
+});

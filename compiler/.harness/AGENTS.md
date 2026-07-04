@@ -1,6 +1,6 @@
 # AGENTS.md
 
-This is a generated ditto.site clone app for http://127.0.0.1:64239/components.html. It is a static Vite React project produced from captured DOM, CSS, assets, metadata, and interaction recipes.
+This is a generated ditto.site clone app for http://127.0.0.1:49738/components.html. It is a static Vite React project produced from captured DOM, CSS, assets, metadata, and interaction recipes.
 
 ## Run
 

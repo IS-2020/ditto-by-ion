@@ -33,6 +33,8 @@ export type CloneOptions = {
   /** DB/worker mode: persist the clone first, then attach verify in the background. */
   asyncVerify?: boolean;
   maxRoutes?: number;
+  /** Multi-page: only capture these route paths (entry is always included). */
+  selectedRoutes?: string[];
   maxCollection?: number;
   captureConcurrency?: number;
   validationConcurrency?: number;

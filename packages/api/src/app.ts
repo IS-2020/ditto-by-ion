@@ -1,16 +1,20 @@
 import { randomBytes } from "node:crypto";
+import { join } from "node:path";
 import { Hono, type Context, type MiddlewareHandler } from "hono";
 import { cors } from "hono/cors";
 import { z } from "zod";
 import { RESPONSE_ALREADY_SENT } from "@hono/node-server/utils/response";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { normalizeCloneRequestOptions, checkCaptureCache } from "@cloner/core";
+import { normalizeCloneRequestOptions, checkCaptureCache, runSiteScan } from "@cloner/core";
 import type { Backend } from "./backend.js";
 import { createMcpServer } from "./mcp.js";
 import { apiKeyAuth, hashApiKey, rateLimit, type AuthConfig } from "./auth.js";
-import { UI_HTML } from "./ui.js";
+import { STUDIO_HTML } from "./ui.js";
+import { WIZARD_HTML } from "./wizard.js";
+import { SHELL_HTML } from "./shell.js";
 import { loadPatternsPayload } from "./patterns.js";
+import { isHtmlLike, rewritePreviewHtml } from "./previewServe.js";
 
 const OptionsSchema = z
   .object({
@@ -21,6 +25,7 @@ const OptionsSchema = z
     verify: z.boolean().optional(),
     asyncVerify: z.boolean().optional(),
     maxRoutes: z.number().int().positive().optional(),
+    selectedRoutes: z.array(z.string().min(1)).optional(),
     maxCollection: z.number().int().positive().optional(),
     captureConcurrency: z.number().int().positive().optional(),
     validationConcurrency: z.number().int().positive().optional(),
@@ -37,6 +42,11 @@ const OptionsSchema = z
     qualityTier: z.enum(["production", "dev", "draft"]).optional(),
   })
   .strict();
+
+const ScanRequest = z.object({
+  url: z.string().url(),
+  maxRoutes: z.number().int().positive().max(50).optional(),
+});
 
 const CloneRequest = z.object({
   url: z.string().url(),
@@ -125,12 +135,39 @@ export function createApp(deps: AppDeps): Hono {
     return c.json(checkCaptureCache(deps.captureCacheDir, url));
   });
 
+  app.post("/v1/scan", async (c) => {
+    const body = await c.req.json().catch(() => null);
+    const parsed = ScanRequest.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ error: "invalid request", details: parsed.error.flatten() }, 400);
+    }
+    const { url, maxRoutes } = parsed.data;
+    if (!/^https?:\/\//i.test(url)) {
+      return c.json({ error: "url must be http(s)" }, 400);
+    }
+    if (deps.assertUrl) {
+      try {
+        await deps.assertUrl(url);
+      } catch (e) {
+        return c.json({ error: "url not allowed", reason: String((e as Error).message ?? e) }, 400);
+      }
+    }
+    try {
+      const scan = await runSiteScan(url, { maxRoutes: maxRoutes ?? 20 });
+      return c.json(scan, 200);
+    } catch (e) {
+      return c.json({ error: String(e).slice(0, 500) }, 500);
+    }
+  });
+
   /** Standalone pattern catalog page (same data as the in-app tab). */
   app.get("/patterns", (c) => c.redirect("/", 302));
 
   // Minimal dev/test UI (self-contained; talks to the same-origin /v1 API). The
   // API surface itself stays the product — this page is a testing convenience.
-  app.get("/", (c) => c.html(UI_HTML));
+  app.get("/", (c) => c.html(SHELL_HTML));
+  app.get("/wizard", (c) => c.html(WIZARD_HTML));
+  app.get("/studio", (c) => c.html(STUDIO_HTML));
 
   if (deps.signup) {
     const signup = deps.signup;
@@ -321,8 +358,20 @@ export function createApp(deps: AppDeps): Hono {
   // Browsable preview of the built clone (static export published by the preview
   // build under public/app-preview/). References are relative, so the export works
   // from this mount — the only requirement is a trailing slash on the root.
+  const servePreviewBytes = (c: Context, file: { bytes: Buffer; contentType: string }, mountBase: string, relPath: string) => {
+    if (isHtmlLike(relPath) || file.contentType.includes("html")) {
+      const html = rewritePreviewHtml(file.bytes.toString("utf8"), mountBase);
+      c.header("content-type", "text/html; charset=utf-8");
+      return c.body(html);
+    }
+    c.header("content-type", file.contentType);
+    c.header("content-length", String(file.bytes.length));
+    return c.body(file.bytes);
+  };
+
   const previewFile = async (c: Context, sub: string) => {
     const id = c.req.param("id") ?? "";
+    const mountBase = `/v1/clones/${id}/app-preview/`;
     const tryPaths = sub.includes(".")
       ? [`public/app-preview/${sub}`]
       : [
@@ -331,18 +380,114 @@ export function createApp(deps: AppDeps): Hono {
           `public/app-preview/${sub}.html`,
         ];
     for (const p of tryPaths) {
-      const file = await backend.file(id, p);
-      if (file) {
-        c.header("content-type", file.contentType);
-        c.header("content-length", String(file.bytes.length));
-        return c.body(file.bytes);
+      let file = await backend.file(id, p);
+      if (!file && backend.runArtifact) {
+        file = await backend.runArtifact(id, join("generated", "app", p));
       }
+      if (file) return servePreviewBytes(c, file, mountBase, p);
     }
     return c.json({ error: "no app preview for this clone (preview builds are on by default for single-page clones; pass options.preview=true otherwise)" }, 404);
+  };
+  /** Early WIP preview from the static HTML mirror (available right after generate, before npm build). */
+  const mirrorPreviewFile = async (c: Context, sub: string) => {
+    const id = c.req.param("id") ?? "";
+    if (!backend.runArtifact) return c.json({ error: "not supported" }, 501);
+    const mountBase = `/v1/clones/${id}/mirror-preview/`;
+    const tryPaths = sub.includes(".")
+      ? [
+          `generated/app/public/static/${sub}`,
+          `generated/app/public/${sub}`,
+          `generated/app/public/app-preview/${sub}`,
+        ]
+      : [
+          `generated/app/public/static/${sub}`.replace(/\/$/, "") + "/index.html",
+          `generated/app/public/app-preview/${sub}`.replace(/\/$/, "") + "/index.html",
+          `generated/app/public/static/index.html`,
+        ];
+    for (const p of tryPaths) {
+      const file = await backend.runArtifact(id, p);
+      if (file) return servePreviewBytes(c, file, mountBase, p);
+    }
+    return c.json({ error: "mirror preview not ready yet" }, 404);
   };
   app.get("/v1/clones/:id/app-preview", (c) => c.redirect(`/v1/clones/${c.req.param("id")}/app-preview/`, 302));
   app.get("/v1/clones/:id/app-preview/", (c) => previewFile(c, "index.html"));
   app.get("/v1/clones/:id/app-preview/:path{.+}", (c) => previewFile(c, c.req.param("path") ?? ""));
+  app.get("/v1/clones/:id/mirror-preview", (c) => c.redirect(`/v1/clones/${c.req.param("id")}/mirror-preview/`, 302));
+  app.get("/v1/clones/:id/mirror-preview/", (c) => mirrorPreviewFile(c, "index.html"));
+  app.get("/v1/clones/:id/mirror-preview/:path{.+}", (c) => mirrorPreviewFile(c, c.req.param("path") ?? ""));
+
+  /** Pixel audit artifacts: source / clone / diff PNGs from the compiler run dir. */
+  const auditKinds = new Set(["source", "clone", "diff"]);
+  app.get("/v1/clones/:id/audit/:viewport/:kind.png", async (c) => {
+    const kind = c.req.param("kind") ?? "";
+    const vp = c.req.param("viewport") ?? "";
+    if (!auditKinds.has(kind) || !/^\d+$/.test(vp)) return c.json({ error: "invalid audit path" }, 400);
+    const rel =
+      kind === "source"
+        ? `source/screenshots/${vp}.png`
+        : kind === "clone"
+          ? `rendered/screenshots/${vp}.png`
+          : `validation/diff/${vp}.png`;
+    const file = backend.runArtifact ? await backend.runArtifact(c.req.param("id"), rel) : null;
+    if (!file) return c.json({ error: "audit image not found (run with verify enabled)" }, 404);
+    c.header("content-type", "image/png");
+    c.header("content-length", String(file.bytes.length));
+    return c.body(file.bytes);
+  });
+
+  app.get("/v1/clones/:id/audit", async (c) => {
+    const view = await backend.status(c.req.param("id"));
+    if (!view) return c.json({ error: "not found" }, 404);
+    const verify = view.verify as {
+      scorecard?: { total?: number };
+      status?: string;
+      stage2Pass?: boolean;
+      gates?: Record<string, { pass?: boolean; metrics?: Record<string, unknown>; issues?: string[] }>;
+    } | undefined;
+    const perceptual = verify?.gates?.perceptual;
+    const visual = verify?.gates?.visual_audit;
+    const perVp = (perceptual?.metrics?.perViewport ?? visual?.metrics?.perViewport ?? {}) as Record<string, number>;
+    const viewports = Object.keys(perVp).map(Number).sort((a, b) => a - b);
+    const base = `/v1/clones/${c.req.param("id")}/audit`;
+    const comparisons = viewports.map((vp) => ({
+      viewport: vp,
+      diffPct: perVp[vp] ?? perVp[String(vp)],
+      sourceUrl: `${base}/${vp}/source.png`,
+      cloneUrl: `${base}/${vp}/clone.png`,
+      diffUrl: `${base}/${vp}/diff.png`,
+    }));
+    return c.json({
+      jobId: c.req.param("id"),
+      status: view.status,
+      verifyStatus: verify?.status,
+      score: verify?.scorecard?.total,
+      stage2Pass: verify?.stage2Pass,
+      perceptualPass: perceptual?.pass,
+      visualAuditPass: visual?.pass,
+      worstDiffPct: perceptual?.metrics?.worstDiffPct ?? visual?.metrics?.worstDiffPct,
+      comparisons,
+      gates: verify?.gates
+        ? Object.fromEntries(
+            Object.entries(verify.gates).map(([k, g]) => [k, { pass: g.pass, issues: (g.issues ?? []).slice(0, 5) }]),
+          )
+        : undefined,
+    });
+  });
+
+  app.get("/v1/clones/:id/wip-files", async (c) => {
+    const files = backend.listWipFiles ? await backend.listWipFiles(c.req.param("id")) : null;
+    if (!files) return c.json({ error: "not found" }, 404);
+    return c.json({ jobId: c.req.param("id"), files });
+  });
+
+  app.get("/v1/clones/:id/wip-files/:path{.+}", async (c) => {
+    if (!backend.readWipFile) return c.json({ error: "not supported" }, 501);
+    const f = await backend.readWipFile(c.req.param("id"), c.req.param("path") ?? "");
+    if (!f) return c.json({ error: "file not found" }, 404);
+    if (f.kind === "text") return c.json({ path: c.req.param("path"), kind: "text", content: f.content ?? "", bytes: f.bytes });
+    return c.json({ path: c.req.param("path"), kind: "binary", bytes: f.bytes });
+  });
 
   app.delete("/v1/clones/:id", async (c) => {
     const ok = await backend.remove(c.req.param("id"));

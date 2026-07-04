@@ -58,4 +58,10 @@ export interface Backend {
   bundle(jobId: string, format?: BundleFormat): Promise<CloneBundle | null>;
   /** Pipeline progress events for polling UIs (null if unsupported or job unknown). */
   events?(jobId: string, after?: number): Promise<Array<Record<string, unknown>> | null>;
+  /** Read a file from the ephemeral compiler run dir (validation screenshots, etc.). */
+  runArtifact?(jobId: string, relPath: string): Promise<{ bytes: Buffer; contentType: string } | null>;
+  /** List generated app files while a job is running or after completion. */
+  listWipFiles?(jobId: string): Promise<string[] | null>;
+  /** Read a generated app file from the run dir (text inline when applicable). */
+  readWipFile?(jobId: string, path: string): Promise<{ kind: "text" | "binary"; content?: string; bytes: number } | null>;
 }

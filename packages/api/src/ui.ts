@@ -1,162 +1,276 @@
 /** Minimal dev/test UI served at GET /. Self-contained (inline CSS/JS, no build). */
-export const UI_HTML = `<!doctype html>
+export const STUDIO_HTML = `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ditto — clone studio</title>
+<title>ditto by ION — clone studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  :root { color-scheme: dark; --accent: #2f6feb; --accent-glow: #5b8def44; --success: #3dd68c; --warn: #f5a623; --error: #ff7b72; --muted: #6b7280; --surface: #0f131a; --border: #1d2330; }
+  :root {
+    color-scheme: dark;
+    --bg: #121417;
+    --surface: #1a1d22;
+    --surface-2: #22262c;
+    --border: #2e3238;
+    --gold: #e6b84a;
+    --gold-dim: #c49a2e;
+    --gold-glow: #e6b84a33;
+    --text: #f4f4f5;
+    --muted: #8b9099;
+    --success: #6ee7a0;
+    --error: #f87171;
+    --accent: var(--gold);
+    --accent-glow: var(--gold-glow);
+  }
   * { box-sizing: border-box; }
-  /* id-selector display rules below beat the UA's [hidden]{display:none} — restore it */
   [hidden] { display: none !important; }
-  body { margin: 0; font: 14px/1.5 ui-sans-serif, system-ui, sans-serif; background: #0b0e14; color: #e6e6e6; }
-  header { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
-  header h1 { font-size: 15px; margin: 0 8px 0 0; font-weight: 600; color: #9ecbff; }
-  #score { margin-left: auto; font: 13px ui-monospace, monospace; color: var(--success); display: none; }
-  input[type=text] { flex: 1 1 320px; min-width: 240px; padding: 8px 10px; border-radius: 6px; border: 1px solid #2a3245; background: #121722; color: inherit; }
-  button { padding: 8px 16px; border-radius: 6px; border: 0; background: var(--accent); color: #fff; font-weight: 600; cursor: pointer; }
-  button:disabled { opacity: .5; cursor: wait; }
-  label { display: flex; gap: 6px; align-items: center; color: #9aa4b2; user-select: none; font-size: 13px; }
-  select { padding: 7px 10px; border-radius: 6px; border: 1px solid #2a3245; background: #121722; color: inherit; font-size: 13px; }
-  #cache-badge { font-size: 12px; padding: 4px 8px; border-radius: 6px; background: #121722; border: 1px solid #2a3245; color: #9aa4b2; }
-  #cache-badge.hit { color: #7ee787; border-color: #1f3d2a; background: #0d1a12; }
-  #tier-hint { font-size: 11px; color: var(--muted); max-width: 220px; line-height: 1.35; }
-  main { display: grid; grid-template-columns: 380px 1fr; height: calc(100vh - 61px); }
-  #sidebar { border-right: 1px solid var(--border); display: flex; flex-direction: column; min-height: 0; background: #0a0d12; }
-  #progress-panel { padding: 18px 16px 14px; border-bottom: 1px solid var(--border); background: var(--surface); }
-  #progress-panel.idle { opacity: .5; }
-  #progress-panel.running { opacity: 1; }
-  .timer-row { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px; }
-  #big-timer { font: 700 28px/1 ui-monospace, monospace; color: #fff; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
-  #big-pct { font: 700 28px/1 ui-monospace, monospace; color: var(--accent); font-variant-numeric: tabular-nums; }
-  .bar-track { height: 6px; background: #1a2030; border-radius: 99px; overflow: hidden; margin-bottom: 12px; }
-  .bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent-dim, #1a3d7a), var(--accent)); border-radius: 99px; transition: width .4s ease; box-shadow: 0 0 12px var(--accent-glow); }
-  #activity { font-size: 13px; color: #c9d4e3; line-height: 1.45; min-height: 2.9em; margin-bottom: 14px; }
-  #activity .sub { display: block; font-size: 11px; color: var(--muted); margin-top: 3px; font-family: ui-monospace, monospace; }
-  .stepper { display: flex; flex-direction: column; gap: 0; }
-  .step { display: flex; align-items: center; gap: 10px; padding: 5px 0; font-size: 12px; color: #4b5563; transition: color .25s; }
-  .step.active { color: #9ecbff; }
-  .step.done { color: #7ee787; }
-  .step.fail { color: var(--error); }
-  .step.fail .step-dot { background: var(--error); }
-  .step-dot { width: 8px; height: 8px; border-radius: 50%; background: #2a3245; flex-shrink: 0; transition: background .25s, box-shadow .25s; }
-  .step.active .step-dot { background: var(--accent); box-shadow: 0 0 8px var(--accent-glow); animation: pulse 1.4s ease infinite; }
-  .step.done .step-dot { background: var(--success); box-shadow: none; animation: none; }
-  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .45; } }
-  .step-label { flex: 1; }
-  .step-detail { font: 10px ui-monospace, monospace; color: var(--muted); }
-  .step.active .step-detail { color: #6b8cce; }
-  #log { flex: 1; overflow-y: auto; padding: 10px 14px; font: 10px/1.65 ui-monospace, monospace; min-height: 0; border-top: 1px solid var(--border); }
-  #log .evt { color: #7ee787; } #log .err { color: var(--error); } #log .meta { color: #8b949e; }
-  #view { display: flex; flex-direction: column; min-height: 0; position: relative; background: #0b0e14; }
-  #tabs { display: flex; gap: 4px; padding: 10px 12px; flex-shrink: 0; background: #121722; border-bottom: 1px solid var(--border); align-items: center; }
-  #tabs a { padding: 8px 16px; border-radius: 6px; background: transparent; color: #9aa4b2; text-decoration: none; font-size: 13px; font-weight: 500; border: 1px solid transparent; }
-  #tabs a:hover { color: #e6e6e6; background: #1a2030; }
-  #tabs a.active { background: #1d2330; color: #9ecbff; border-color: #2f6feb; box-shadow: 0 0 0 1px #2f6feb44; }
-  header .hdr-btn { padding: 8px 14px; border-radius: 6px; border: 1px solid #2a3245; background: #121722; color: #9ecbff; font-weight: 600; cursor: pointer; font-size: 13px; }
-  header .hdr-btn:hover { border-color: #2f6feb; background: #1a2030; }
-  header .hdr-btn.active { border-color: #2f6feb; background: #1a2d4a; }
-  iframe { flex: 1; border: 0; background: #fff; min-height: 0; }
-  #loading { flex: 1; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 20px; padding: 40px; background: radial-gradient(ellipse at 50% 30%, #121722 0%, #0b0e14 70%); text-align: center; }
+  body { margin: 0; font: 15px/1.55 "Inter", ui-sans-serif, system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; padding: 16px 28px; border-bottom: 1px solid var(--border); }
+  .brand { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .ditto-mark { font-size: 20px; font-weight: 700; letter-spacing: -0.03em; }
+  .by { font-size: 13px; font-weight: 500; color: var(--muted); }
+  .ion-lockup { display: inline-flex; align-items: center; gap: 8px; }
+  .ion-icon { width: 26px; height: 26px; flex-shrink: 0; }
+  .ion-word { font-size: 18px; font-weight: 700; letter-spacing: 0.06em; }
+  .crumb { font-size: 14px; color: var(--muted); margin-left: 4px; font-weight: 400; }
+  .topbar-actions { display: flex; align-items: center; gap: 12px; }
+  #score { font: 600 13px ui-monospace, monospace; color: var(--success); display: none; padding: 6px 12px; border-radius: 999px; background: #0d1f16; border: 1px solid #1f3d2a; }
+  .clone-hero { padding: 28px 28px 22px; border-bottom: 1px solid var(--border); max-width: 960px; }
+  .hero-lead { margin: 0 0 18px; font-size: 15px; line-height: 1.6; color: #c4c8cf; max-width: 620px; }
+  .clone-bar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+  #url { flex: 1 1 280px; min-width: 200px; padding: 14px 18px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 15px; outline: none; }
+  #url:focus { border-color: var(--gold-dim); box-shadow: 0 0 0 3px var(--gold-glow); }
+  #url::placeholder { color: #5c6169; }
+  .btn-primary { padding: 14px 24px; border-radius: 999px; border: 0; background: var(--gold); color: #121417; font: 600 15px "Inter", sans-serif; cursor: pointer; white-space: nowrap; }
+  .btn-primary:hover { background: #f0c55a; }
+  .btn-primary:disabled { opacity: .55; cursor: wait; }
+  .mode-picker { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+  .mode { padding: 8px 16px; border-radius: 999px; border: 1px solid var(--border); background: transparent; color: var(--muted); font: 500 13px "Inter", sans-serif; cursor: pointer; }
+  .mode:hover { border-color: #4a4f57; color: var(--text); }
+  .mode.active { border-color: var(--gold-dim); background: #2a2418; color: var(--gold); }
+  .mode-desc { font-size: 12px; color: var(--muted); margin: 0 0 8px; min-height: 1.2em; }
+  .advanced-options { font-size: 13px; color: var(--muted); }
+  .advanced-options summary { cursor: pointer; color: #6b7078; list-style: none; }
+  .advanced-options summary::-webkit-details-marker { display: none; }
+  .advanced-inner { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin-top: 10px; }
+  label { display: flex; gap: 8px; align-items: center; color: var(--muted); font-size: 13px; cursor: pointer; user-select: none; }
+  #cache-badge { font-size: 12px; padding: 5px 10px; border-radius: 999px; background: var(--surface); border: 1px solid var(--border); color: var(--muted); }
+  #cache-badge.hit { color: var(--success); border-color: #1f3d2a; background: #0d1a12; }
+  main.workspace { display: grid; grid-template-columns: 1fr 340px; height: calc(100vh - 230px); min-height: 400px; }
+  #view { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--border); }
+  #tabs { display: flex; gap: 6px; padding: 12px 20px; border-bottom: 1px solid var(--border); }
+  #tabs a { padding: 8px 16px; border-radius: 999px; color: var(--muted); text-decoration: none; font-size: 13px; font-weight: 500; border: 1px solid transparent; }
+  #tabs a:hover { color: var(--text); background: var(--surface); }
+  #tabs a.active { background: #2a2418; color: var(--gold); border-color: var(--gold-dim); }
+  .hdr-btn { padding: 8px 16px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); font: 500 13px "Inter", sans-serif; cursor: pointer; }
+  .hdr-btn:hover { border-color: var(--gold-dim); color: var(--text); }
+  .hdr-btn.active { border-color: var(--gold-dim); background: #2a2418; color: var(--gold); }
+  iframe, #frame { flex: 1; border: 0; background: #fff; min-height: 0; width: 100%; }
+  #view-body { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden; position: relative; }
+  #loading { display: none; flex-direction: column; align-items: center; justify-content: center; gap: 20px; padding: 40px; text-align: center; position: absolute; inset: 0; z-index: 3; background: rgba(18,20,23,.75); backdrop-filter: blur(4px); }
   #loading.show { display: flex; }
   .loading-ring { width: 96px; height: 96px; transform: rotate(-90deg); }
-  .loading-ring-bg { fill: none; stroke: #1d2330; stroke-width: 4; }
-  .loading-ring-fill { fill: none; stroke: var(--accent); stroke-width: 4; stroke-linecap: round; transition: stroke-dashoffset .5s ease; }
-  #loading-title { font-size: 18px; font-weight: 600; color: #e6e6e6; margin: 0; }
-  #loading-activity { font-size: 14px; color: #9aa4b2; max-width: 420px; line-height: 1.5; margin: 0; }
-  #loading-timer { font: 600 15px ui-monospace, monospace; color: var(--accent); margin: 0; }
-  #empty { flex: 1; display: grid; place-items: center; color: #4b5563; text-align: center; padding: 24px; }
-  #view-body { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden; position: relative; }
-  #pattern-panel { flex: 1; overflow-y: auto; padding: 16px 18px; min-height: 0; display: none; }
+  .loading-ring-bg { fill: none; stroke: var(--border); stroke-width: 4; }
+  .loading-ring-fill { fill: none; stroke: var(--gold); stroke-width: 4; stroke-linecap: round; transition: stroke-dashoffset .5s ease; }
+  #loading-title { font-size: 20px; font-weight: 600; margin: 0; }
+  #loading-activity { font-size: 14px; color: var(--muted); max-width: 420px; margin: 0; }
+  #loading-timer { font: 600 14px ui-monospace, monospace; color: var(--gold); margin: 0; }
+  #empty { flex: 1; display: grid; place-items: center; color: var(--muted); text-align: center; padding: 48px 28px; line-height: 1.6; }
+  #pattern-panel { flex: 1; overflow-y: auto; padding: 20px 24px; display: none; }
   #pattern-panel.show { display: block; }
-  #pattern-panel h2 { margin: 0 0 4px; font-size: 15px; font-weight: 600; color: #9ecbff; }
-  #pattern-panel .lead { margin: 0 0 16px; font-size: 12px; color: #8b949e; line-height: 1.5; max-width: 720px; }
-  .pattern-stats { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
-  .pattern-stat { background: #121722; border: 1px solid #2a3245; border-radius: 8px; padding: 8px 12px; font-size: 12px; }
-  .pattern-stat b { display: block; font: 700 18px/1 ui-monospace, monospace; color: #e6e6e6; margin-bottom: 2px; }
-  .pattern-graph { display: flex; flex-direction: column; gap: 14px; }
-  .pattern-kind { border: 1px solid #1d2330; border-radius: 10px; background: #0f131a; overflow: hidden; }
-  .pattern-kind-head { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: #121722; border-bottom: 1px solid #1d2330; }
-  .pattern-kind-icon { font-size: 18px; line-height: 1; }
-  .pattern-kind-title { font-weight: 600; font-size: 13px; color: #c9d4e3; flex: 1; }
-  .pattern-kind-count { font: 11px ui-monospace, monospace; color: #6b7280; }
-  .pattern-nodes { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 12px; }
-  .pattern-node { font: 11px ui-monospace, monospace; padding: 6px 9px; border-radius: 6px; border: 1px solid #2a3245; background: #0b0e14; color: #9aa4b2; cursor: default; transition: border-color .2s, background .2s, color .2s; }
-  .pattern-node:hover { border-color: #3d4f6f; color: #c9d4e3; }
-  .pattern-node.hit { border-color: #3dd68c; background: #0d1f16; color: #7ee787; box-shadow: 0 0 0 1px #3dd68c33; }
-  .pattern-node .flags { display: block; font-size: 9px; color: #6b7280; margin-top: 3px; }
-  .pattern-node.hit .flags { color: #5cb87a; }
-  #match-banner { margin: 0 0 14px; padding: 10px 12px; border-radius: 8px; background: #0d1a12; border: 1px solid #1f3d2a; font-size: 12px; color: #7ee787; display: none; }
+  #audit-panel { flex: 1; overflow-y: auto; padding: 20px 24px; display: none; }
+  #audit-panel.show { display: block; }
+  .audit-head { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+  .audit-score { font: 700 28px/1 ui-monospace, monospace; color: var(--gold); }
+  .audit-badge { padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; border: 1px solid var(--border); }
+  .audit-badge.pass { color: var(--success); border-color: #1f3d2a; background: #0d1f16; }
+  .audit-badge.fail { color: var(--error); border-color: #3d1f1f; background: #1a0d0d; }
+  .audit-vp { margin-bottom: 24px; border: 1px solid var(--border); border-radius: 14px; overflow: hidden; background: var(--surface); }
+  .audit-vp-head { padding: 10px 14px; background: var(--surface-2); border-bottom: 1px solid var(--border); font-size: 13px; display: flex; justify-content: space-between; }
+  .audit-triptych { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; background: var(--border); }
+  .audit-triptych img { width: 100%; display: block; background: #fff; }
+  .audit-triptych figcaption { font-size: 10px; text-align: center; padding: 6px; color: var(--muted); background: var(--surface-2); }
+  .preview-badge { position: absolute; top: 12px; left: 12px; z-index: 2; padding: 6px 12px; border-radius: 999px; font-size: 11px; font-weight: 600; background: #0009; color: #fff; border: 1px solid #ffffff33; pointer-events: none; }
+  #scan-panel { padding: 14px 18px; border-bottom: 1px solid var(--border); max-height: 220px; overflow-y: auto; }
+  #scan-panel h3 { margin: 0 0 8px; font-size: 13px; font-weight: 600; }
+  #scan-panel .scan-meta { font-size: 11px; color: var(--muted); margin: 0 0 10px; }
+  .route-list { display: flex; flex-direction: column; gap: 4px; }
+  .route-row { display: flex; align-items: center; gap: 8px; font-size: 12px; padding: 4px 0; cursor: pointer; }
+  .route-row input { accent-color: var(--gold); }
+  .route-row .path { font-family: ui-monospace, monospace; color: var(--muted); font-size: 10px; }
+  .route-row.entry { font-weight: 600; }
+  #scan-status { font-size: 11px; color: var(--muted); margin-top: 8px; }
+  #hero-routes { margin: 14px 0 4px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); }
+  #hero-routes h3 { margin: 0 0 8px; font-size: 14px; font-weight: 600; }
+  #pattern-panel h2 { margin: 0 0 6px; font-size: 18px; font-weight: 600; }
+  #pattern-panel .lead { margin: 0 0 18px; font-size: 13px; color: var(--muted); line-height: 1.55; max-width: 720px; }
+  .pattern-stats { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
+  .pattern-stat { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px; font-size: 12px; color: var(--muted); }
+  .pattern-stat b { display: block; font: 700 20px/1 ui-monospace, monospace; color: var(--text); margin-bottom: 2px; }
+  .pattern-graph { display: flex; flex-direction: column; gap: 12px; }
+  .pattern-kind { border: 1px solid var(--border); border-radius: 14px; background: var(--surface); overflow: hidden; }
+  .pattern-kind-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: var(--surface-2); border-bottom: 1px solid var(--border); }
+  .pattern-kind-icon { font-size: 18px; }
+  .pattern-kind-title { font-weight: 600; font-size: 13px; flex: 1; text-transform: capitalize; }
+  .pattern-kind-count { font: 11px ui-monospace, monospace; color: var(--muted); }
+  .pattern-nodes { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 14px; }
+  .pattern-node { font: 11px ui-monospace, monospace; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--muted); }
+  .pattern-node.hit { border-color: var(--success); background: #0d1f16; color: var(--success); }
+  .pattern-node .flags { display: block; font-size: 9px; color: #5c6169; margin-top: 3px; }
+  #match-banner { margin: 0 0 14px; padding: 12px 14px; border-radius: 12px; background: #0d1f16; border: 1px solid #1f3d2a; font-size: 13px; color: var(--success); display: none; }
   #match-banner.show { display: block; }
-  #view-body { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+  #sidebar { display: flex; flex-direction: column; min-height: 0; background: var(--surface); }
+  .sidebar-head { padding: 18px 18px 12px; border-bottom: 1px solid var(--border); }
+  .sidebar-title { font-size: 14px; font-weight: 600; margin: 0 0 4px; display: flex; align-items: center; gap: 8px; }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #4b5563; }
+  #progress-panel.running .status-dot { background: var(--success); box-shadow: 0 0 8px #6ee7a066; animation: pulse 1.4s ease infinite; }
+  .sidebar-sub { font-size: 12px; color: var(--muted); margin: 0; }
+  #progress-panel { padding: 16px 18px; border-bottom: 1px solid var(--border); }
+  #progress-panel.idle { opacity: .65; }
+  .timer-row { display: flex; justify-content: space-between; margin-bottom: 10px; }
+  #big-timer, #big-pct { font: 700 24px/1 ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  #big-pct { color: var(--gold); }
+  .bar-track { height: 4px; background: var(--border); border-radius: 99px; overflow: hidden; margin-bottom: 14px; }
+  .bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--gold-dim), var(--gold)); transition: width .4s ease; box-shadow: 0 0 10px var(--gold-glow); }
+  #activity { font-size: 13px; color: #c4c8cf; line-height: 1.45; min-height: 2.8em; margin-bottom: 14px; }
+  #activity .sub { display: block; font-size: 11px; color: var(--muted); margin-top: 4px; font-family: ui-monospace, monospace; }
+  .stepper { display: flex; flex-direction: column; gap: 2px; }
+  .step { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: 12px; color: #4b5563; }
+  .step.active { color: var(--gold); }
+  .step.done { color: var(--success); }
+  .step.fail { color: var(--error); }
+  .step-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--border); flex-shrink: 0; }
+  .step.active .step-dot { background: var(--gold); animation: pulse 1.4s ease infinite; }
+  .step.done .step-dot { background: var(--success); }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .45; } }
+  .step-label { flex: 1; }
+  .step-detail { font: 10px ui-monospace, monospace; color: var(--muted); max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #log { flex: 1; overflow-y: auto; padding: 12px 16px; font: 10px/1.65 ui-monospace, monospace; border-top: 1px solid var(--border); }
+  #log .evt { color: var(--success); }
+  #log .err { color: var(--error); }
+  #log .meta { color: var(--muted); }
+  @media (max-width: 900px) {
+    main.workspace { grid-template-columns: 1fr; height: auto; }
+    #sidebar { max-height: 300px; border-top: 1px solid var(--border); }
+    #view { border-right: 0; min-height: 360px; }
+  }
 </style>
 </head>
 <body>
-<header>
-  <h1>ditto</h1>
-  <input id="url" type="text" inputmode="url" placeholder="https://cropin.com/" value="" autocomplete="url">
-  <select id="tier" title="Quality tier">
-    <option value="production" selected>Production</option>
-    <option value="dev">Dev (cache regen)</option>
-    <option value="draft">Draft preview</option>
-  </select>
-  <span id="cache-badge" title="Capture cache">—</span>
-  <label id="async-wrap"><input id="asyncVerify" type="checkbox" checked> async verify</label>
-  <label><input id="fresh" type="checkbox"> fresh (no cache)</label>
-  <span id="tier-hint">Full viewports + motion + validate. Reuses cache when unchanged.</span>
-  <button type="button" id="hdr-patterns" class="hdr-btn active">Pattern catalog</button>
-  <button id="go">Clone</button>
-  <span id="score"></span>
+<header class="topbar">
+  <div class="brand">
+    <span class="ditto-mark">ditto</span>
+    <span class="by">by</span>
+    <span class="ion-lockup" aria-label="ION">
+      <svg class="ion-icon" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+        <path fill="#E6B84A" d="M13 4h6v9h9v6h-9v9h-6v-9H4v-6h9V4z"/>
+      </svg>
+      <span class="ion-word">ION</span>
+    </span>
+    <span class="crumb">/ Clone studio</span>
+  </div>
+  <div class="topbar-actions">
+    <button type="button" id="hdr-patterns" class="hdr-btn active">Patterns</button>
+    <span id="score"></span>
+  </div>
 </header>
-<main>
-  <div id="sidebar">
-    <div id="progress-panel" class="idle">
-      <div class="timer-row">
-        <span id="big-timer">0:00</span>
-        <span id="big-pct">—</span>
+<section class="clone-hero">
+  <p class="hero-lead">Paste any public URL. Ditto captures the page and builds a static Next.js clone you can preview here — without touching the live site.</p>
+  <div class="clone-bar">
+    <input id="url" type="text" inputmode="url" placeholder="https://example.com" autocomplete="url">
+    <button type="button" id="go" class="btn-primary">Clone page →</button>
+  </div>
+  <div class="mode-picker" id="mode-picker">
+    <button type="button" class="mode active" data-tier="production">Full quality</button>
+    <button type="button" class="mode" data-tier="draft">Quick preview</button>
+    <button type="button" class="mode" data-tier="dev">From cache</button>
+  </div>
+  <p class="mode-desc" id="tier-hint">Best fidelity — all viewports, motion, and validation.</p>
+  <div id="hero-routes" hidden>
+    <h3>Choose pages to replicate</h3>
+    <p class="scan-meta" id="hero-scan-meta">Scanning site routes…</p>
+    <div class="route-list" id="hero-route-list"></div>
+  </div>
+  <details class="advanced-options">
+    <summary>More options</summary>
+    <div class="advanced-inner">
+      <label id="async-wrap"><input id="asyncVerify" type="checkbox"> Background validation</label>
+      <label><input id="fresh" type="checkbox"> Skip cache</label>
+      <span id="cache-badge">—</span>
+    </div>
+  </details>
+  <select id="tier" hidden aria-hidden="true">
+    <option value="production" selected>production</option>
+    <option value="dev">dev</option>
+    <option value="draft">draft</option>
+  </select>
+</section>
+<main class="workspace">
+  <div id="view">
+    <div id="tabs">
+      <a id="tab-live" href="#" class="active">Live site</a>
+      <a id="tab-app" href="#">Clone preview</a>
+      <a id="tab-audit" href="#">Audit</a>
+      <a id="tab-patterns" href="#">Patterns</a>
+      <a id="tab-json" href="#" target="_blank" hidden>JSON</a>
+      <a id="tab-bundle" href="#" target="_blank" hidden>Download</a>
+    </div>
+    <div id="view-body">
+      <span id="preview-badge" class="preview-badge" hidden>Live site</span>
+      <div id="loading">
+        <svg class="loading-ring" viewBox="0 0 96 96"><circle class="loading-ring-bg" cx="48" cy="48" r="42"/><circle class="loading-ring-fill" id="loading-ring-fill" cx="48" cy="48" r="42" stroke-dasharray="263.89" stroke-dashoffset="263.89"/></svg>
+        <p id="loading-title">Cloning…</p>
+        <p id="loading-activity">Starting</p>
+        <p id="loading-timer">0:00 · 0%</p>
       </div>
+      <div id="empty" hidden>Paste a URL above — the live homepage appears here instantly.</div>
+      <div id="pattern-panel">
+        <h2>Pattern catalog</h2>
+        <p class="lead">Fingerprints for carousels, Shopify, cookie banners, analytics, and more. Matches light up green during a clone.</p>
+        <div id="match-banner"></div>
+        <div class="pattern-stats" id="pattern-stats"></div>
+        <div class="pattern-graph" id="pattern-graph"><div class="meta">Loading…</div></div>
+      </div>
+      <div id="audit-panel">
+        <div class="audit-head">
+          <span class="audit-score" id="audit-score">—</span>
+          <span class="audit-badge" id="audit-pass-badge">No audit yet</span>
+        </div>
+        <p class="lead" id="audit-lead">Pixel comparison of the live site vs the Next.js clone (requires Full quality + validation).</p>
+        <div id="audit-comparisons"></div>
+      </div>
+      <iframe id="frame" hidden title="Site preview"></iframe>
+    </div>
+  </div>
+  <aside id="sidebar">
+    <div id="scan-panel">
+      <h3>Pages to clone</h3>
+      <p class="scan-meta" id="scan-meta">Enter a URL — we scan ~20 common routes before building.</p>
+      <div class="route-list" id="route-list"></div>
+      <p id="scan-status"></p>
+    </div>
+    <div class="sidebar-head">
+      <p class="sidebar-title"><span class="status-dot"></span> Compiler at work</p>
+      <p class="sidebar-sub" id="sidebar-status">Waiting for a URL</p>
+    </div>
+    <div id="progress-panel" class="idle">
+      <div class="timer-row"><span id="big-timer">0:00</span><span id="big-pct">—</span></div>
       <div class="bar-track"><div class="bar-fill" id="bar-fill"></div></div>
-      <div id="activity">Ready — enter a URL and hit Clone.</div>
+      <div id="activity">Ready — paste a URL and click Clone page.</div>
       <div class="stepper" id="stepper">
-        <div class="step" data-stage="navigate"><span class="step-dot"></span><span class="step-label">Navigate</span><span class="step-detail" id="sd-navigate"></span></div>
-        <div class="step" data-stage="capture"><span class="step-dot"></span><span class="step-label">Capture</span><span class="step-detail" id="sd-capture"></span></div>
-        <div class="step" data-stage="assets"><span class="step-dot"></span><span class="step-label">Assets</span><span class="step-detail" id="sd-assets"></span></div>
-        <div class="step" data-stage="generate"><span class="step-dot"></span><span class="step-label">Generate</span><span class="step-detail" id="sd-generate"></span></div>
-        <div class="step" data-stage="preview"><span class="step-dot"></span><span class="step-label">App preview</span><span class="step-detail" id="sd-preview"></span></div>
+        <div class="step" data-stage="navigate"><span class="step-dot"></span><span class="step-label">Load page</span><span class="step-detail" id="sd-navigate"></span></div>
+        <div class="step" data-stage="capture"><span class="step-dot"></span><span class="step-label">Capture layout</span><span class="step-detail" id="sd-capture"></span></div>
+        <div class="step" data-stage="assets"><span class="step-dot"></span><span class="step-label">Fetch assets</span><span class="step-detail" id="sd-assets"></span></div>
+        <div class="step" data-stage="generate"><span class="step-dot"></span><span class="step-label">Generate app</span><span class="step-detail" id="sd-generate"></span></div>
+        <div class="step" data-stage="preview"><span class="step-dot"></span><span class="step-label">Build preview</span><span class="step-detail" id="sd-preview"></span></div>
         <div class="step" data-stage="validate"><span class="step-dot"></span><span class="step-label">Validate</span><span class="step-detail" id="sd-validate"></span></div>
       </div>
     </div>
     <div id="log"><div class="meta">Event log</div></div>
-  </div>
-  <div id="view">
-    <div id="tabs">
-      <a id="tab-patterns" href="#">Pattern catalog</a>
-      <a id="tab-app" href="#">App preview</a>
-      <a id="tab-json" href="#" target="_blank" hidden>result.json</a>
-      <a id="tab-bundle" href="#" target="_blank" hidden>download .tgz</a>
-    </div>
-    <div id="view-body">
-    <div id="loading">
-      <svg class="loading-ring" viewBox="0 0 96 96" aria-hidden="true">
-        <circle class="loading-ring-bg" cx="48" cy="48" r="42"/>
-        <circle class="loading-ring-fill" id="loading-ring-fill" cx="48" cy="48" r="42" stroke-dasharray="263.89" stroke-dashoffset="263.89"/>
-      </svg>
-      <p id="loading-title">Cloning…</p>
-      <p id="loading-activity">Starting</p>
-      <p id="loading-timer">0:00 · 0%</p>
-    </div>
-    <div id="empty">No clone yet — enter a URL above and hit Clone, or browse the pattern catalog.</div>
-    <div id="pattern-panel">
-      <h2>Pattern catalog</h2>
-      <p class="lead">Frozen library of common website building blocks (carousels, Shopify, Lottie, cookie banners…). During a clone the compiler scans captured HTML for these fingerprints and uses them to infer layout recipes and generation hints.</p>
-      <div id="match-banner"></div>
-      <div class="pattern-stats" id="pattern-stats"></div>
-      <div class="pattern-graph" id="pattern-graph"><div class="meta">Loading catalog…</div></div>
-    </div>
-    <iframe id="frame" hidden></iframe>
-    </div>
-  </div>
+  </aside>
 </main>
 <script>
 const $ = (id) => document.getElementById(id);
@@ -197,11 +311,20 @@ let previewOk = true;
 let previewFiles = 0;
 let patternCatalog = null;
 let matchedPatternIds = new Set();
-let activeView = "empty";
+let activeView = "live";
 let previewBase = "";
 let lastFinishedJobId = null;
 let lastFinishedSummary = null;
 let pendingPreviewJobId = null;
+let lastPreviewError = "";
+let livePreviewUrl = "";
+let scanResult = null;
+let selectedRoutePaths = new Set();
+let scanTimer = null;
+let liveTimer = null;
+let asyncVerifyPending = false;
+let activeJobId = null;
+let previewMode = "live"; // live | wip | clone
 
 const KIND_ICON = {
   carousel: "🎠", marquee: "📜", counter: "🔢", text_effect: "⌨️",
@@ -214,15 +337,178 @@ const KIND_ICON = {
 
 function kindIcon(kind) { return KIND_ICON[kind] || "🧩"; }
 
+function setSidebarStatus(t) {
+  const el = $("sidebar-status");
+  if (el) el.textContent = t;
+}
+
 function showView(name) {
   activeView = name;
+  const showFrame = name === "live" || name === "preview" || (name === "loading" && (livePreviewUrl || previewBase));
   $("loading").classList.toggle("show", name === "loading");
-  $("frame").hidden = name !== "preview";
+  $("frame").hidden = !showFrame;
   $("empty").hidden = name !== "empty";
   $("pattern-panel").classList.toggle("show", name === "patterns");
-  $("tab-app").classList.toggle("active", name === "preview" || name === "empty" || name === "loading");
+  $("audit-panel").classList.toggle("show", name === "audit");
+  $("tab-live").classList.toggle("active", name === "live");
+  $("tab-app").classList.toggle("active", name === "preview");
+  $("tab-audit").classList.toggle("active", name === "audit");
   $("tab-patterns").classList.toggle("active", name === "patterns");
   $("hdr-patterns").classList.toggle("active", name === "patterns");
+  const badge = $("preview-badge");
+  if (badge) {
+    badge.hidden = !showFrame;
+    badge.textContent = previewMode === "live" ? "Live site" : previewMode === "wip" ? "Building…" : "Next.js clone";
+  }
+}
+
+function mountLivePreview(url) {
+  if (!url) { showView("empty"); return; }
+  livePreviewUrl = url;
+  previewMode = "live";
+  $("frame").src = url;
+  $("frame").hidden = false;
+  showView("live");
+}
+
+function mountWipPreview(jobId) {
+  previewMode = "wip";
+  previewBase = "/v1/clones/" + jobId;
+  $("frame").src = previewBase + "/mirror-preview/?t=" + Date.now();
+  $("frame").hidden = false;
+  showView("loading");
+}
+
+function mountClonePreview(jobId, optimistic) {
+  previewMode = "clone";
+  previewBase = "/v1/clones/" + jobId;
+  $("tab-app").href = previewBase + "/app-preview/";
+  $("frame").src = previewBase + "/app-preview/?t=" + Date.now();
+  $("frame").hidden = false;
+  showView(optimistic ? "loading" : "preview");
+}
+
+async function runScan(url) {
+  const status = $("scan-status");
+  const meta = $("scan-meta");
+  status.textContent = "Scanning site routes…";
+  setSidebarStatus("Scanning " + shortHost(url));
+  try {
+    const r = await fetch("/v1/scan", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ url, maxRoutes: 20 }) });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || String(r.status));
+    scanResult = d;
+    selectedRoutePaths = new Set(d.suggestedPaths.length ? d.suggestedPaths : d.routes.map((rt) => rt.path));
+    renderRouteList();
+    const metaText = d.discovered + " routes found · " + selectedRoutePaths.size + " selected for cloning";
+    meta.textContent = metaText;
+    $("hero-scan-meta").textContent = metaText;
+    $("hero-routes").hidden = false;
+    status.textContent = "Adjust checkboxes, then click Clone page.";
+    setSidebarStatus("Ready — " + selectedRoutePaths.size + " pages selected");
+    log("scan: " + d.discovered + " discovered, " + d.routes.length + " shown", "evt");
+  } catch (e) {
+    status.textContent = "Scan failed: " + String(e).slice(0, 80);
+    meta.textContent = "Could not scan — will clone homepage only.";
+    selectedRoutePaths = new Set(["/"]);
+    renderRouteList();
+  }
+}
+
+function renderRouteList() {
+  const routes = scanResult?.routes ?? [{ path: "/", label: "Home", role: "entry", suggested: true }];
+  for (const listId of ["route-list", "hero-route-list"]) {
+    const list = $(listId);
+    if (!list) continue;
+    list.innerHTML = "";
+    for (const rt of routes) {
+      const row = document.createElement("label");
+      row.className = "route-row" + (rt.role === "entry" ? " entry" : "");
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.checked = selectedRoutePaths.has(rt.path);
+      cb.disabled = rt.role === "entry";
+      cb.addEventListener("change", () => {
+        if (cb.checked) selectedRoutePaths.add(rt.path);
+        else selectedRoutePaths.delete(rt.path);
+        selectedRoutePaths.add(scanResult?.entryPath ?? "/");
+        const t = (scanResult?.discovered ?? 0) + " routes found · " + selectedRoutePaths.size + " selected for cloning";
+        $("scan-meta").textContent = t;
+        $("hero-scan-meta").textContent = t;
+        renderRouteList();
+      });
+      const label = document.createElement("span");
+      label.textContent = rt.label;
+      const path = document.createElement("span");
+      path.className = "path";
+      path.textContent = rt.path;
+      row.appendChild(cb);
+      row.appendChild(label);
+      row.appendChild(path);
+      list.appendChild(row);
+    }
+  }
+}
+
+async function loadAudit(jobId) {
+  const panel = $("audit-comparisons");
+  panel.innerHTML = '<div class="meta">Loading audit…</div>';
+  try {
+    const r = await fetch("/v1/clones/" + jobId + "/audit");
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || String(r.status));
+    const scoreEl = $("audit-score");
+    const badge = $("audit-pass-badge");
+    if (typeof d.score === "number") {
+      scoreEl.textContent = d.score.toFixed(1);
+      $("score").textContent = "score " + d.score.toFixed(1);
+      $("score").style.display = "block";
+    }
+    const passed = d.stage2Pass || (d.perceptualPass && d.visualAuditPass);
+    badge.textContent = d.comparisons?.length ? (passed ? "Pixel audit pass" : "Pixel diff detected") : "Validation pending";
+    badge.className = "audit-badge" + (d.comparisons?.length ? (passed ? " pass" : " fail") : "");
+    if (typeof d.worstDiffPct === "number") {
+      $("audit-lead").textContent = "Worst viewport diff: " + (d.worstDiffPct * 100).toFixed(2) + "% — live site (left) vs Next.js clone (center) vs diff (right).";
+    }
+    panel.innerHTML = "";
+    if (!d.comparisons?.length) {
+      panel.innerHTML = '<div class="meta">No comparison images yet. Use Full quality without background validation, or wait for async verify.</div>';
+      return;
+    }
+    for (const c of d.comparisons) {
+      const block = document.createElement("div");
+      block.className = "audit-vp";
+      const pct = typeof c.diffPct === "number" ? (c.diffPct * 100).toFixed(2) + "% diff" : "";
+      block.innerHTML =
+        '<div class="audit-vp-head"><span>' + c.viewport + 'px viewport</span><span>' + pct + '</span></div>' +
+        '<div class="audit-triptych">' +
+          '<figure><img src="' + c.sourceUrl + '" alt="Live site"><figcaption>Live</figcaption></figure>' +
+          '<figure><img src="' + c.cloneUrl + '" alt="Clone"><figcaption>Clone</figcaption></figure>' +
+          '<figure><img src="' + c.diffUrl + '" alt="Diff"><figcaption>Diff</figcaption></figure>' +
+        '</div>';
+      panel.appendChild(block);
+    }
+  } catch (e) {
+    panel.innerHTML = '<div class="meta">Audit unavailable: ' + e + '</div>';
+  }
+}
+
+async function pollVerify(jobId) {
+  for (let i = 0; i < 60; i++) {
+    const r = await fetch("/v1/clones/" + jobId);
+    if (!r.ok) return;
+    const d = await r.json();
+    if (d.verify && (d.verify.gates || d.verify.scorecard)) {
+      lastFinishedSummary = { ...lastFinishedSummary, verify: d.verify };
+      if (typeof d.verify.scorecard?.total === "number") {
+        $("score").textContent = "score " + d.verify.scorecard.total.toFixed(1);
+        $("score").style.display = "block";
+      }
+      void loadAudit(jobId);
+      return;
+    }
+    await new Promise((res) => setTimeout(res, 2000));
+  }
 }
 
 async function loadPatternCatalog() {
@@ -367,8 +653,20 @@ function setActivity(desc) {
 
 function bumpEvent(ev, e) {
   lastEventAt = Date.now();
-  if (ev === "app_build_done") { previewOk = !!e.ok; previewFiles = e.files || 0; }
-  if (ev === "app_preview_failed") previewOk = false;
+  if (ev === "app_build_done") {
+    previewOk = !!(e.ok || e.fallback);
+    previewFiles = e.files || 0;
+    if (e.fallback) lastPreviewError = "Next.js export failed — showing static HTML mirror";
+  }
+  if (ev === "app_preview_failed") {
+    previewOk = false;
+    lastPreviewError = String(e.error || "App preview build failed").slice(0, 200);
+  }
+  if (ev === "generated" && activeJobId) void tryMountWipPreview(activeJobId);
+  if (ev === "app_build_done" && activeJobId) {
+    if (e.ok) mountClonePreview(activeJobId, true);
+    else if (e.fallback) mountClonePreview(activeJobId, true);
+  }
   if (ev === "patterns_resolved") applyPatternMatches(e.ids || [], e.platforms || []);
   const stage = STAGE_FOR[ev];
   if (stage) setStage(stage);
@@ -415,6 +713,7 @@ function resetUi(url) {
   targetPct = 0; displayPct = 0; seenEvents = 0;
   captureVpCount = 0; refetchPass = 0; activeStage = null;
   previewOk = true; previewFiles = 0;
+  lastPreviewError = "";
   $("log").innerHTML = "";
   $("score").style.display = "none";
   $("score").textContent = "";
@@ -423,6 +722,8 @@ function resetUi(url) {
   $("tabs").hidden = false;
   $("frame").hidden = true;
   $("empty").hidden = true;
+  $("loading").classList.remove("show");
+  mountLivePreview(url);
   $("loading").classList.add("show");
   showView("loading");
   $("loading-title").textContent = "Cloning " + shortHost(url);
@@ -430,8 +731,9 @@ function resetUi(url) {
   document.querySelectorAll("[id^=sd-]").forEach((el) => { el.textContent = ""; });
   $("progress-panel").classList.remove("idle");
   $("progress-panel").classList.add("running");
+  setSidebarStatus("Cloning " + shortHost(url));
   setStage("navigate");
-  setActivity({ main: "Submitting clone job", sub: url });
+  setActivity({ main: "Starting clone", sub: url });
   targetPct = 1; displayPct = 0;
   renderPct(0);
   if (timerId) clearInterval(timerId);
@@ -477,21 +779,23 @@ function syncPreviewFromSummary(d) {
   if (d.previewReady) {
     previewOk = true;
     if (!previewFiles) previewFiles = 1;
-  } else if ((d.timings?.previewMs ?? 0) > 0) {
-    previewOk = true;
   }
 }
 
-async function previewReachable(base) {
-  const url = base + "/app-preview/index.html";
-  for (let i = 0; i < 12; i++) {
+function onFrameLoad() {
+  if (previewMode === "wip" || previewMode === "clone") {
+    $("loading").classList.remove("show");
+    showView("preview");
+  }
+}
+
+async function tryMountWipPreview(jobId) {
+  for (let i = 0; i < 30; i++) {
     try {
-      const pr = await fetch(url, { method: "HEAD" });
-      if (pr.ok) return true;
-      const gr = await fetch(url, { method: "GET", headers: { range: "bytes=0-0" } });
-      if (gr.ok) return true;
-    } catch { /* tab throttling / server still publishing */ }
-    await new Promise((res) => setTimeout(res, 100 * (i + 1)));
+      const r = await fetch("/v1/clones/" + jobId + "/mirror-preview/", { cache: "no-store" });
+      if (r.ok) { mountWipPreview(jobId); return true; }
+    } catch { /* retry */ }
+    await new Promise((res) => setTimeout(res, 500));
   }
   return false;
 }
@@ -502,23 +806,25 @@ async function mountPreview(jobId, summary) {
   $("tab-app").href = base + "/app-preview/";
   syncPreviewFromSummary(summary);
   const serverReady = !!(summary && summary.previewReady);
-  const timedPreview = (summary?.timings?.previewMs ?? 0) > 0;
-  const shouldTry = serverReady || timedPreview || previewFiles > 0;
+  const shouldTry = serverReady || (previewOk && previewFiles > 0);
   if (!shouldTry) {
-    $("empty").textContent = "Clone finished but app preview did not build — try fresh (no cache) or download .tgz";
+    const failedBuild = (summary?.timings?.previewMs ?? 0) > 0 && !serverReady;
+    if (livePreviewUrl) { showView("live"); return false; }
+    $("empty").textContent = failedBuild
+      ? (lastPreviewError || "App preview build failed — try Full quality with Skip cache, or download .tgz")
+      : "Clone finished but app preview did not build — try fresh (no cache) or download .tgz";
     showView("empty");
     pendingPreviewJobId = null;
     return false;
   }
-  if (!(await previewReachable(base))) {
-    $("empty").textContent = "App preview is still publishing — click App preview or return to this tab in a moment";
-    showView("empty");
-    pendingPreviewJobId = jobId;
-    return false;
+  // Optimistic: load iframe immediately when server says previewReady
+  if (serverReady) {
+    mountClonePreview(jobId, false);
+    pendingPreviewJobId = null;
+    return true;
   }
+  mountClonePreview(jobId, true);
   pendingPreviewJobId = null;
-  $("frame").src = base + "/app-preview/";
-  showView("preview");
   return true;
 }
 
@@ -556,10 +862,16 @@ function finishSuccess(d, jobId) {
     }
   });
   const previewLikely = d.previewReady || (d.timings?.previewMs ?? 0) > 0 || previewFiles > 0;
+  setSidebarStatus(previewLikely ? "Clone complete" : "Done — preview unavailable");
   setActivity({ main: previewLikely ? "Done!" : "Done — preview unavailable", sub: fmtElapsed(Date.now() - t0) + " total" });
+  $("progress-panel").classList.remove("running");
+  $("progress-panel").classList.add("idle");
   const t = d.timings || {};
   log("done in " + fmtElapsed(Date.now() - t0) + " (capture " + ((t.captureMs||0)/1000).toFixed(1) + "s · generate " + ((t.generateMs||0)/1000).toFixed(1) + "s · preview " + ((t.previewMs||0)/1000).toFixed(1) + "s)" + (d.captureReused ? " [cache hit]" : ""), "evt");
-  if (d.verify && typeof d.verify.score === "number") {
+  if (d.verify && typeof d.verify.scorecard?.total === "number") {
+    $("score").textContent = "score " + d.verify.scorecard.total.toFixed(1);
+    $("score").style.display = "block";
+  } else if (d.verify && typeof d.verify.score === "number") {
     $("score").textContent = "score " + d.verify.score.toFixed(1);
     $("score").style.display = "block";
   }
@@ -571,8 +883,11 @@ function finishSuccess(d, jobId) {
   $("tabs").hidden = false;
   $("tab-json").hidden = false;
   $("tab-bundle").hidden = false;
+  $("loading").classList.remove("show");
   void mountPreview(jobId, d);
   void loadClonePatterns(jobId);
+  void loadAudit(jobId);
+  if (asyncVerifyPending) void pollVerify(jobId);
 }
 
 async function waitForJob(id) {
@@ -592,18 +907,28 @@ $("go").onclick = async () => {
   if (url !== $("url").value.trim()) $("url").value = url;
   $("go").disabled = true;
   resetUi(url);
+  mountLivePreview(url);
+  if (!scanResult || scanResult.url !== url) await runScan(url);
   const tier = $("tier").value;
   const fresh = $("fresh").checked;
   const asyncVerify = $("asyncVerify").checked;
+  asyncVerifyPending = tier === "production" && asyncVerify;
+  const routes = [...selectedRoutePaths];
   const options = { qualityTier: tier };
   if (fresh) options.noCache = true;
   if (tier === "production" && asyncVerify) options.asyncVerify = true;
+  if (routes.length > 1) {
+    options.mode = "multi";
+    options.selectedRoutes = routes;
+    options.maxRoutes = routes.length;
+  }
   if (tier === "draft") log("Draft preview — low quality peek only", "meta");
   log("POST /v1/clones " + url + " tier=" + tier);
   let jobId = null;
+  activeJobId = null;
   let poller = setInterval(async () => {
     if (!jobId) jobId = await findRunningJob(url);
-    if (jobId) await pollEvents(jobId);
+    if (jobId) { activeJobId = jobId; await pollEvents(jobId); }
   }, 250);
   const stopPoller = () => { clearInterval(poller); poller = null; };
   try {
@@ -615,6 +940,7 @@ $("go").onclick = async () => {
       throw new Error(detail || d.error || String(r.status));
     }
     jobId = d.jobId || jobId;
+    if (jobId) activeJobId = jobId;
     if (r.status === 202 || d.status === "queued") {
       log("queued jobId=" + jobId + " — polling until done");
       if (!jobId) jobId = await findRunningJob(url);
@@ -627,6 +953,7 @@ $("go").onclick = async () => {
     stopTimers();
     $("big-timer").textContent = fmtElapsed(Date.now() - t0);
     finishSuccess(summary, jobId);
+    activeJobId = null;
   } catch (e) {
     const msg = String(e);
     if (jobId && (msg.includes("Failed to fetch") || msg.includes("NetworkError") || msg.includes("Load failed"))) {
@@ -663,6 +990,16 @@ $("tab-patterns").onclick = (ev) => {
   showView("patterns");
   void loadPatternCatalog();
 };
+$("tab-live").onclick = (ev) => {
+  ev.preventDefault();
+  if (livePreviewUrl) mountLivePreview(livePreviewUrl);
+  else showView("empty");
+};
+$("tab-audit").onclick = async (ev) => {
+  ev.preventDefault();
+  showView("audit");
+  if (lastFinishedJobId) await loadAudit(lastFinishedJobId);
+};
 $("hdr-patterns").onclick = (ev) => {
   ev.preventDefault();
   showView("patterns");
@@ -676,19 +1013,46 @@ $("tab-app").onclick = async (ev) => {
 };
 
 void loadPatternCatalog();
-showView("patterns");
+showView("empty");
+$("frame").addEventListener("load", onFrameLoad);
+
+function scheduleLivePreview() {
+  if (liveTimer) clearTimeout(liveTimer);
+  liveTimer = setTimeout(() => {
+    const url = normalizeUrl($("url").value);
+    if (!url) { showView("empty"); return; }
+    mountLivePreview(url);
+    if (scanTimer) clearTimeout(scanTimer);
+    scanTimer = setTimeout(() => { void runScan(url); }, 600);
+    void refreshCacheBadge();
+  }, 350);
+}
+
+$("url").addEventListener("input", scheduleLivePreview);
+$("url").addEventListener("change", scheduleLivePreview);
 $("url").addEventListener("keydown", (e) => { if (e.key === "Enter") $("go").click(); });
 
 const TIER_HINTS = {
-  production: "Full viewports + motion + validate. Reuses cache when unchanged.",
-  dev: "Regen from cache — skip live capture when cached. No witness gates.",
-  draft: "Draft preview only — 1280px, no motion/interactions/validate.",
+  production: "Best fidelity — all screen sizes, animations, and quality checks.",
+  dev: "Reuse a previous capture when available — faster rebuild.",
+  draft: "Fast peek at one screen size — good for a quick look.",
 };
 function syncTierUi() {
   const tier = $("tier").value;
   $("tier-hint").textContent = TIER_HINTS[tier] || "";
   $("async-wrap").hidden = tier !== "production";
+  document.querySelectorAll(".mode").forEach((btn) => {
+    btn.classList.toggle("active", btn.getAttribute("data-tier") === tier);
+  });
 }
+document.querySelectorAll(".mode").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const tier = btn.getAttribute("data-tier");
+    if (!tier) return;
+    $("tier").value = tier;
+    syncTierUi();
+  });
+});
 async function refreshCacheBadge() {
   const url = normalizeUrl($("url").value);
   const badge = $("cache-badge");
@@ -712,7 +1076,6 @@ async function refreshCacheBadge() {
   }
 }
 $("tier").onchange = syncTierUi;
-$("url").addEventListener("change", refreshCacheBadge);
 $("url").addEventListener("blur", refreshCacheBadge);
 syncTierUi();
 void refreshCacheBadge();
@@ -723,3 +1086,6 @@ document.addEventListener("visibilitychange", () => {
 </script>
 </body>
 </html>`;
+
+/** @deprecated use STUDIO_HTML */
+export const UI_HTML = STUDIO_HTML;

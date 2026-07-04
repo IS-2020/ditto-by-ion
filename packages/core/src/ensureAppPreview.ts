@@ -23,6 +23,8 @@ export type AppPreviewResult = {
   /** files published under public/app-preview/ (0 when the build failed) */
   files: number;
   error?: string;
+  /** true when Next export failed and the static HTML mirror was published instead */
+  fallback?: boolean;
 };
 
 const REWRITE_ROOTS = ["_next", "assets", "static"];
@@ -101,12 +103,19 @@ export function ensureAppPreview(
   if (!outDir) {
     const build = buildApp(appDir, harnessDir);
     if (!build.ok || !build.outDir) {
-      log({ event: "app_build_done", ok: false, ms: build.durationMs });
-      return { ok: false, previewMs: Date.now() - t0, files: 0, error: build.stderr.slice(-2000) };
+      const staticMirror = join(appDir, "public", "static");
+      if (existsSync(join(staticMirror, "index.html"))) {
+        outDir = staticMirror;
+      } else {
+        log({ event: "app_build_done", ok: false, ms: build.durationMs });
+        return { ok: false, previewMs: Date.now() - t0, files: 0, error: build.stderr.slice(-2000) };
+      }
+    } else {
+      outDir = build.outDir;
     }
-    outDir = build.outDir;
   }
 
+  const usedFallback = outDir.endsWith(`${sep}static`) || outDir.includes(`${sep}public${sep}static`);
   cpSync(outDir, previewDir, { recursive: true });
   let files = 0;
   for (const file of walkFiles(previewDir)) {
@@ -119,6 +128,6 @@ export function ensureAppPreview(
     const rewritten = relativizeExportRefs(src, depth, isHtml ? "html" : "css");
     if (rewritten !== src) writeFileSync(file, rewritten);
   }
-  log({ event: "app_build_done", ok: true, ms: Date.now() - t0, files, reused });
-  return { ok: true, previewMs: Date.now() - t0, files };
+  log({ event: "app_build_done", ok: true, ms: Date.now() - t0, files, reused, fallback: usedFallback || undefined });
+  return { ok: true, previewMs: Date.now() - t0, files, fallback: usedFallback || undefined };
 }

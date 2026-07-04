@@ -14,6 +14,7 @@ export type ResolvedCloneOptions = CloneOptions & {
 };
 
 export function resolveCloneMode(options: CloneOptions = {}): CloneMode {
+  if (options.selectedRoutes && options.selectedRoutes.length > 1) return "multi";
   return options.mode ?? (options.multiPage ? "multi" : "single");
 }
 
